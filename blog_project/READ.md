@@ -1,6 +1,6 @@
-# Setup Instructions (README.md style)
-"""
-SETUP INSTRUCTIONS:
+
+
+## SETUP INSTRUCTIONS:
 
 1. Create project structure:
    mkdir django_blog
