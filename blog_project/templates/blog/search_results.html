@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Search Results - Personal Blog{% endblock %}
+{% block header %}Search Results{% endblock %}
+{% block subheader %}
+    {% if query %}
+        Results for "{{ query }}"
+    {% else %}
+        Enter a search term
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        {% if query %}
+            <p class="mb-4">Found {{ posts|length }} result{{ posts|length|pluralize }} for "{{ query }}"</p>
+            
+            <div class="row">
+                {% for post in posts %}
+                <div class="col-md-6 mb-4">
+                    <div class="card h-100">
+                        {% if post.featured_image %}
+                        <img src="{{ post.featured_image.url }}" class="card-img-top" alt="{{ post.title }}" style="height: 200px; object-fit: cover;">
+                        {% endif %}
+                        <div class="card-body">
+                            {% if post.featured %}
+                            <span class="featured-badge mb-2 d-inline-block">Featured</span>
+                            {% endif %}
+                            <h5 class="card-title">{{ post.title }}</h5>
+                            <p class="card-text">{{ post.excerpt|truncatewords:20 }}</p>
+                            <div class="post-meta mb-2">
+                                <i class="fas fa-user"></i> {{ post.author.get_full_name|default:post.author.username }}
+                                <i class="fas fa-calendar ms-2"></i> {{ post.published_at|date:"M d, Y" }}
+                                <i class="fas fa-folder ms-2"></i> {{ post.category.name }}
+                            </div>
+                            <a href="{{ post.get_absolute_url }}" class="btn btn-primary btn-sm">Read More</a>
+                        </div>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="col-12">
+                    <div class="text-center py-5">
+                        <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                        <h3>No results found</h3>
+                        <p class="text-muted">Try searching with different keywords.</p>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                <h3>Search Posts</h3>
+                <p class="text-muted">Use the search box in the navigation to find posts.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-4">
+        <div class="sidebar">
+            <div class="mb-4">
+                <h5><i class="fas fa-search"></i> Search Tips</h5>
+                <ul class="list-unstyled">
+                    <li>• Try different keywords</li>
+                    <li>• Use shorter search terms</li>
+                    <li>• Check spelling</li>
+                    <li>• Search is case-insensitive</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,109 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ post.title }} - Personal Blog{% endblock %}
+
+{% block header %}{{ post.title }}{% endblock %}
+{% block subheader %}{{ post.excerpt }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <article class="mb-5">
+            {% if post.featured_image %}
+            <img src="{{ post.featured_image.url }}" class="img-fluid rounded mb-4" alt="{{ post.title }}">
+            {% endif %}
+            
+            <div class="post-meta mb-4">
+                {% if post.featured %}
+                <span class="featured-badge me-2">Featured</span>
+                {% endif %}
+                <i class="fas fa-user"></i> {{ post.author.get_full_name|default:post.author.username }}
+                <i class="fas fa-calendar ms-3"></i> {{ post.published_at|date:"F d, Y" }}
+                <i class="fas fa-folder ms-3"></i> {{ post.category.name }}
+                <i class="fas fa-eye ms-3"></i> {{ post.views }} views
+            </div>
+            
+            <div class="content">
+                {{ post.content|linebreaks }}
+            </div>
+        </article>
+
+        <!-- Related Posts -->
+        {% if related_posts %}
+        <div class="mb-5">
+            <h4>Related Posts</h4>
+            <div class="row">
+                {% for related in related_posts %}
+                <div class="col-md-4 mb-3">
+                    <div class="card">
+                        {% if related.featured_image %}
+                        <img src="{{ related.featured_image.url }}" class="card-img-top" alt="{{ related.title }}" style="height: 150px; object-fit: cover;">
+                        {% endif %}
+                        <div class="card-body">
+                            <h6 class="card-title">{{ related.title }}</h6>
+                            <p class="card-text small">{{ related.excerpt|truncatewords:10 }}</p>
+                            <a href="{{ related.get_absolute_url }}" class="btn btn-sm btn-outline-primary">Read</a>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Comments -->
+        <div class="comments-section">
+            <h4>Comments ({{ comments.count }})</h4>
+            
+            <!-- Comment Form -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Leave a Comment</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            {{ comment_form.name }}
+                        </div>
+                        <div class="mb-3">
+                            {{ comment_form.email }}
+                        </div>
+                        <div class="mb-3">
+                            {{ comment_form.content }}
+                        </div>
+                        <button type="submit" class="btn btn-primary">Post Comment</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Comments List -->
+            {% for comment in comments %}
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <h6 class="card-title">{{ comment.name }}</h6>
+                        <small class="text-muted">{{ comment.created_at|date:"M d, Y H:i" }}</small>
+                    </div>
+                    <p class="card-text">{{ comment.content|linebreaks }}</p>
+                </div>
+            </div>
+            {% empty %}
+            <p class="text-muted">No comments yet. Be the first to comment!</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <div class="sidebar">
+            <div class="mb-4">
+                <h5><i class="fas fa-folder"></i> Category</h5>
+                <a href="{{ post.category.get_absolute_url }}" class="btn btn-outline-primary">
+                    {{ post.category.name }}
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

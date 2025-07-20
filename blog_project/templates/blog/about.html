@@ -1,0 +1,71 @@
+{% extends 'base.html' %}
+
+{% block title %}About - Personal Blog{% endblock %}
+{% block header %}About Me{% endblock %}
+{% block subheader %}Get to know the person behind the blog{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-body p-5">
+                <h2 class="mb-4">Welcome to My Blog!</h2>
+                
+                <p class="lead">
+                    Hi there! I'm passionate about sharing knowledge, experiences, and insights 
+                    through this personal blog platform.
+                </p>
+                
+                <p>
+                    This blog covers a variety of topics including technology, travel, food, and lifestyle. 
+                    I believe in the power of storytelling and sharing experiences to connect with others 
+                    and create meaningful conversations.
+                </p>
+                
+                <h4>What You'll Find Here</h4>
+                <ul>
+                    <li><strong>Technology:</strong> Latest trends, tutorials, and insights</li>
+                    <li><strong>Travel:</strong> Adventures, guides, and cultural experiences</li>
+                    <li><strong>Food:</strong> Recipes, reviews, and culinary discoveries</li>
+                    <li><strong>Lifestyle:</strong> Personal growth, tips, and daily reflections</li>
+                </ul>
+                
+                <h4>Get In Touch</h4>
+                <p>
+                    I'd love to hear from you! Feel free to leave comments on posts or reach out 
+                    through the contact form. Your feedback and suggestions are always welcome.
+                </p>
+                
+                <div class="text-center mt-4">
+                    <a href="{% url 'blog:post_list' %}" class="btn btn-primary">
+                        <i class="fas fa-arrow-left"></i> Back to Blog
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="sidebar">
+            <div class="mb-4">
+                <h5><i class="fas fa-chart-bar"></i> Blog Stats</h5>
+                <ul class="list-unstyled">
+                    <li>• Posts Published: Coming Soon</li>
+                    <li>• Categories: Coming Soon</li>
+                    <li>• Total Views: Coming Soon</li>
+                </ul>
+            </div>
+            
+            <div class="mb-4">
+                <h5><i class="fas fa-envelope"></i> Stay Connected</h5>
+                <p>Subscribe to get notified about new posts and updates.</p>
+                <div class="d-grid">
+                    <button class="btn btn-outline-primary" disabled>
+                        <i class="fas fa-bell"></i> Coming Soon
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %>

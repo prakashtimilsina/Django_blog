@@ -1,0 +1,8 @@
+Package         Version
+--------------- -------
+asgiref         3.9.1
+Django          5.2.4
+pillow          11.3.0
+pip             25.1.1
+python-decouple 3.8
+sqlparse        0.5.3

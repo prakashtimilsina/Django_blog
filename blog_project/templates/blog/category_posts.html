@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ category.name }} - Personal Blog{% endblock %}
+{% block header %}{{ category.name }}{% endblock %}
+{% block subheader %}{{ category.description }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-8">
+        <div class="row">
+            {% for post in posts %}
+            <div class="col-md-6 mb-4">
+                <div class="card h-100">
+                    {% if post.featured_image %}
+                    <img src="{{ post.featured_image.url }}" class="card-img-top" alt="{{ post.title }}" style="height: 200px; object-fit: cover;">
+                    {% endif %}
+                    <div class="card-body">
+                        {% if post.featured %}
+                        <span class="featured-badge mb-2 d-inline-block">Featured</span>
+                        {% endif %}
+                        <h5 class="card-title">{{ post.title }}</h5>
+                        <p class="card-text">{{ post.excerpt|truncatewords:20 }}</p>
+                        <div class="post-meta mb-2">
+                            <i class="fas fa-user"></i> {{ post.author.get_full_name|default:post.author.username }}
+                            <i class="fas fa-calendar ms-2"></i> {{ post.published_at|date:"M d, Y" }}
+                            <i class="fas fa-eye ms-2"></i> {{ post.views }}
+                        </div>
+                        <a href="{{ post.get_absolute_url }}" class="btn btn-primary btn-sm">Read More</a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-12">
+                <div class="text-center py-5">
+                    <i class="fas fa-file-alt fa-3x text-muted mb-3"></i>
+                    <h3>No posts in this category</h3>
+                    <p class="text-muted">Check back later for new content!</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <nav aria-label="Posts pagination">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                {% endif %}
+                
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                    {% else %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <div class="sidebar">
+            <div class="mb-4">
+                <h5><i class="fas fa-folder"></i> All Categories</h5>
+                <ul class="list-unstyled">
+                    {% for cat in categories %}
+                    <li class="mb-2">
+                        <a href="{{ cat.get_absolute_url }}" class="text-decoration-none {% if cat == category %}fw-bold text-primary{% endif %}">
+                            {{ cat.name }} ({{ cat.posts.count }})
+                        </a>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
