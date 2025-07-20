@@ -1,0 +1,100 @@
+# Python
+*.pyc
+*.pyo
+*.pyd
+__pycache__/
+*.so
+
+# Django stuff:
+*.log
+*.pot
+*.py[cod]
+*.sqlite3
+*.sqlite3-journal
+
+# If using Django migrations
+*/migrations/__pycache__/
+*/migrations/*.pyc
+
+# If using virtualenv:
+venv/
+ENV/
+env/
+.venv/
+.env/
+
+# VS Code
+.vscode/
+
+# PyCharm
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Static files
+staticfiles/
+static/
+static_root/
+
+# Media files
+media/
+
+# Local environment variables
+.env
+*.env
+
+# pip-tools output
+requirements/*.txt
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pytest
+.cache
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+
+# Build
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Celery beat schedule file
+celerybeat-schedule
+
+# Gunicorn
+*.pid
+
+# Backup files
+*.bak
+
+# Docker
+*.pid
+*.seed
+*.pid.lock
+
+# pytest
+.pytest_cache/
+
+# Sphinx documentation
+docs/_build/
+
+# node modules if using n
