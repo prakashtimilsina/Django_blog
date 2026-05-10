@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<record>
+  <record_id>REC-MULTI-001</record_id>
+  <source_system>MULTI-DOC</source_system>
+  <batch_id>BATCH-MULTI-2026</batch_id>
+  <year>2026</year>
+  <month>1</month>
+  <patient>
+    <id>PAT-M-001</id>
+    <first_name>Alice</first_name>
+    <last_name>Multi</last_name>
+  </patient>
+</record>
+
+<?xml version="1.0" encoding="UTF-8"?>
+<record>
+  <record_id>REC-MULTI-002</record_id>
+  <source_system>MULTI-DOC</source_system>
+  <batch_id>BATCH-MULTI-2026</batch_id>
+  <year>2026</year>
+  <month>2</month>
+  <patient>
+    <id>PAT-M-002</id>
+    <first_name>Bob</first_name>
+    <last_name>NoRoot</last_name>
+  </patient>
+</record>
+
+<?xml version="1.0" encoding="UTF-8"?>
+<record>
+  <record_id>REC-MULTI-003</record_id>
+  <source_system>MULTI-DOC</source_system>
+  <batch_id>BATCH-MULTI-2026</batch_id>
+  <year>2026</year>
+  <month>3</month>
+  <patient>
+    <id>PAT-M-003</id>
+    <first_name>Carol</first_name>
+    <last_name>MultiDoc</last_name>
+  </patient>
+</record>
+
+<?xml version="1.0" encoding="UTF-8"?>
+<record>
+  <record_id>REC-MULTI-004</record_id>
+  <source_system>MULTI-DOC</source_system>
+  <batch_id>BATCH-MULTI-2026</batch_id>
+  <year>2026</year>
+  <month>4</month>
+  <patient>
+    <id>PAT-M-004</id>
+    <first_name>David</first_name>
+    <last_name>Fragment</last_name>
+  </patient>
+</record>

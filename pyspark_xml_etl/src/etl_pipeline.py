@@ -36,7 +36,7 @@ from flattener import flatten_struct, select_output_columns
 from pivot_handler import pivot_repeating_elements
 from schema_builder import load_schema
 from utils import build_spark_session, repartition_df, write_output
-from xml_processor import read_xml, validate_corrupt_records
+from xml_processor import read_xml, validate_corrupt_records, normalize_multi_doc_xml
 
 logging.basicConfig(
     level=logging.INFO,
@@ -85,12 +85,34 @@ def load_config(config_path: str) -> dict:
 def stage_read(spark, cfg: dict):
     schema = load_schema(cfg["schema"]["path"])
     source = cfg["source"]
+
+    reader_options = dict(source.get("reader_options", {}))
+
+    # Multi-document XML: each logical document has its own <?xml?> declaration
+    # with no shared root wrapper.  spark-xml's XmlInputFormat handles this
+    # natively via byte-level row scanning, so no pre-processing is required.
+    # Setting multi_document: true adds a guard that prevents accidental use of
+    # wholeFile=true (which would break multi-doc parsing) and logs confirmation.
+    if source.get("multi_document", False):
+        if str(reader_options.get("wholeFile", "false")).lower() == "true":
+            raise ValueError(
+                "source.reader_options.wholeFile=true is incompatible with "
+                "multi_document: true. wholeFile loads the entire file as a "
+                "single XML document, which will fail or read only the first "
+                "record. Remove wholeFile from reader_options."
+            )
+        logger.info(
+            "multi_document=true: spark-xml XmlInputFormat will scan for "
+            "<%s> bytes and skip <?xml?> declarations between records.",
+            source["row_tag"],
+        )
+
     df = read_xml(
         spark=spark,
         path=source["path"],
         row_tag=source["row_tag"],
         schema=schema,
-        options=source.get("reader_options", {}),
+        options=reader_options,
     )
     max_corrupt = cfg.get("quality", {}).get("max_corrupt_records", 0)
     validate_corrupt_records(df, max_corrupt=max_corrupt)

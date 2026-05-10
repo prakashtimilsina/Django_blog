@@ -45,15 +45,59 @@ Rules you must follow when namespaces are present
 4. xsi:type attributes are stripped along with the namespace prefix;
    they will appear as attr_type if attributePrefix="attr_".
    Add "xsi:type" to excludeAttribute in reader_options to suppress them.
+
+Multi-document XML (multiple <?xml?> declarations, no root wrapper)
+-------------------------------------------------------------------
+spark-xml uses ``XmlInputFormat`` — a Hadoop InputFormat that scans the
+raw bytes of a file looking for the exact byte sequence ``<rowTag>`` and
+``</rowTag>``.  It does NOT attempt to parse the whole file as a single
+XML document.
+
+This means a file structured like:
+
+    <?xml version="1.0" encoding="UTF-8"?>
+    <record>...</record>
+
+    <?xml version="1.0" encoding="UTF-8"?>
+    <record>...</record>
+
+is handled correctly by default.  The ``<?xml?>`` bytes between records
+fall outside the ``<record>…</record>`` byte range and are silently
+skipped.  No root wrapper element is required.
+
+Two failure modes to avoid
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. ``wholeFile=true`` — causes spark-xml to load the entire file as a
+   single XML document, which will fail or read only the first record.
+   Never set this option for multi-document files (or large files in
+   general; it prevents parallelism).
+
+2. Mid-file encoding changes — if documents in the same file declare
+   different encodings (e.g., UTF-8 then ISO-8859-1), the JVM XML
+   parser may reject the second record.  Ensure all documents use the
+   same encoding (UTF-8 is strongly recommended).
+
+Safety-net: ``normalize_multi_doc_xml``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If you must pass the file to a strict XML parser outside of Spark
+(e.g., for XSLT transforms or schema validation), use
+``normalize_multi_doc_xml()`` to strip the duplicate ``<?xml?>``
+declarations before processing.  This function is NOT needed in the
+normal spark-xml pipeline path.
 """
 
 import logging
+import os
+import re
+import tempfile
 from typing import Any, Dict, List, Optional
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import StructType
 
 logger = logging.getLogger(__name__)
+
+_XML_DECL_RE = re.compile(r"^\s*<\?xml\b", re.IGNORECASE)
 
 _SAFE_READER_DEFAULTS: Dict[str, str] = {
     "mode": "PERMISSIVE",
@@ -178,3 +222,58 @@ def validate_corrupt_records(df: DataFrame, max_corrupt: int = 0) -> None:
             f"Found {count} corrupt XML records (threshold={max_corrupt}). "
             "Check _corrupt_record column for details."
         )
+
+
+def normalize_multi_doc_xml(
+    input_path: str,
+    output_path: Optional[str] = None,
+) -> str:
+    """
+    Strip duplicate ``<?xml?>`` declarations from a multi-document XML file.
+
+    spark-xml handles multi-document XML natively (see module docstring), so
+    this function is NOT needed in the normal pipeline path.  Use it only when
+    you need to pass the file to a strict single-document XML parser outside
+    of Spark (e.g., XSLT transforms, XSD validation, or debugging tools).
+
+    The function reads the file line-by-line (streaming), keeps the first
+    ``<?xml?>`` declaration it encounters, and silently drops all subsequent
+    ones.  Memory usage is O(line length), not O(file size), so it is safe
+    for large files on local disk — but it cannot process ``gs://`` paths
+    directly; stage the file locally first.
+
+    Parameters
+    ----------
+    input_path  : local path to the source multi-document XML file
+    output_path : destination path for the normalized file.
+                  Defaults to a temporary file (caller is responsible for
+                  deleting it when done).
+
+    Returns
+    -------
+    str — path to the normalized output file
+    """
+    if output_path is None:
+        fd, output_path = tempfile.mkstemp(suffix=".xml", prefix="xml_etl_norm_")
+        os.close(fd)
+
+    seen_declaration = False
+    with (
+        open(input_path, "r", encoding="utf-8") as fin,
+        open(output_path, "w", encoding="utf-8") as fout,
+    ):
+        for line in fin:
+            if _XML_DECL_RE.match(line):
+                if not seen_declaration:
+                    fout.write(line)
+                    seen_declaration = True
+                # else: silently drop duplicate declaration
+            else:
+                fout.write(line)
+
+    logger.info(
+        "Normalized multi-doc XML: %s → %s (duplicated <?xml?> declarations removed)",
+        input_path,
+        output_path,
+    )
+    return output_path

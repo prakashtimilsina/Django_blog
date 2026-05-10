@@ -33,6 +33,12 @@ spark_conf:
 source:
   path: "tests/fixtures/sample_records.xml"
   row_tag: "record"
+  # Set multi_document: true when the XML file contains multiple documents each
+  # preceded by their own <?xml version="..."?> declaration with no shared root
+  # wrapper element.  spark-xml handles this natively via byte-level row scanning
+  # — no pre-processing is needed.  Enabling this flag guards against accidental
+  # use of wholeFile=true (which is incompatible) and logs a confirmation.
+  multi_document: false
   reader_options:
     charset: "UTF-8"
     treatEmptyValuesAsNulls: "true"
