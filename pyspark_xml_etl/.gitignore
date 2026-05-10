@@ -1,0 +1,64 @@
+# =============================================================================
+# PySpark / Python — .gitignore
+# =============================================================================
+
+# ── Large data files (NEVER commit these) ────────────────────────────────────
+*.xml
+*.csv
+*.tsv
+*.json.gz
+*.parquet
+*.avro
+*.orc
+
+# Allow schema config and small test fixture (version-controlled)
+!config/schema_config.json
+!tests/fixtures/*.xml
+
+# ── Spark runtime artefacts ───────────────────────────────────────────────────
+derby.log
+metastore_db/
+checkpoint/
+spark-warehouse/
+.spark-history/
+
+# ── Python artefacts ─────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+.Python
+
+# ── Virtual environments ──────────────────────────────────────────────────────
+venv/
+.venv/
+env/
+.env/
+ENV/
+
+# ── Jupyter ───────────────────────────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── IDE / editor ──────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Test / coverage artefacts ─────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
