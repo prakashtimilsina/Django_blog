@@ -37,9 +37,13 @@ build/
 # ── Virtual environments ──────────────────────────────────────────────────────
 venv/
 .venv/
-env/
-.env/
+# Note: "env/" is intentionally omitted here — it would block config/env/.
+# Instead list the specific venv root names that should be ignored:
+.env
 ENV/
+
+# ── Deploy-time download cache (spark-xml JAR cached locally) ─────────────────
+.cache/
 
 # ── Jupyter ───────────────────────────────────────────────────────────────────
 .ipynb_checkpoints/

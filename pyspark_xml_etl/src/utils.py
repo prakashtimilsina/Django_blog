@@ -1,13 +1,26 @@
 """
 SparkSession factory, partitioning helpers, and output writer.
+
+GCP / Dataproc notes
+--------------------
+On Dataproc the GCS connector (``gs://`` support) is pre-installed on every
+node image.  The ``_DATAPROC_DEFAULTS`` below apply extra GCS connector
+tuning that is safe to include on all environments — they are no-ops locally
+when the GCS connector is absent.
+
+When Dataproc submits the job it injects Application Default Credentials
+automatically, so no explicit credential configuration is needed in this code.
 """
 
 import logging
+import os
 from typing import Any, Dict, List, Optional
 
 from pyspark.sql import DataFrame, SparkSession
 
 logger = logging.getLogger(__name__)
+
+# ── Spark defaults ────────────────────────────────────────────────────────────
 
 _SPARK_DEFAULTS: Dict[str, str] = {
     # Wide schemas with 1 000–3 000 columns need more shuffle partitions
@@ -24,6 +37,29 @@ _SPARK_DEFAULTS: Dict[str, str] = {
     "spark.sql.debug.maxToStringFields": "3000",
 }
 
+# GCS connector performance tuning — applied on top of defaults when running
+# on Dataproc (detected via DATAPROC_IMAGE_VERSION env var).
+_DATAPROC_GCS_TUNING: Dict[str, str] = {
+    # 128 MB GCS block size — matches typical Parquet row-group size
+    "spark.hadoop.fs.gs.block.size": "134217728",
+    # 8 MB read buffer — reduces round-trips for sequential XML reads
+    "spark.hadoop.fs.gs.io.buffersize": "8388608",
+    # Skip expensive implicit-dir-repair scans on large GCS prefixes
+    "spark.hadoop.fs.gs.implicit.dir.repair.enable": "false",
+    # Allow Spark to write multiple GCS objects in parallel
+    "spark.hadoop.fs.gs.outputstream.type": "FLUSHABLE_COMPOSITE",
+    # Avoid small GCS list overhead when checking existing output paths
+    "spark.hadoop.fs.gs.glob.flatlist.enable": "true",
+}
+
+
+def _is_dataproc() -> bool:
+    """Return True when the process is running on a Dataproc cluster node."""
+    return (
+        os.environ.get("DATAPROC_IMAGE_VERSION") is not None
+        or os.environ.get("DATAPROC_CLUSTER_NAME") is not None
+    )
+
 
 def build_spark_session(
     app_name: str,
@@ -33,21 +69,30 @@ def build_spark_session(
     """
     Build a production-grade SparkSession.
 
+    On Dataproc, GCS connector tuning is applied automatically.
+    Locally, GCS tuning entries are silently ignored.
+
     Parameters
     ----------
-    app_name   : value shown in the Spark UI
-    spark_conf : caller-supplied config overrides (merged on top of defaults)
-    extra_jars : additional JAR paths to add to ``spark.jars``
+    app_name   : value shown in the Spark UI and Cloud Logging
+    spark_conf : caller-supplied overrides (merged on top of defaults)
+    extra_jars : additional JAR paths added to ``spark.jars``
+                 (spark-xml must be on the classpath via ``--packages``
+                 or listed here when not using spark-submit --packages)
 
     Notes
     -----
-    spark-xml must be on the classpath before this function is called,
-    either via ``--packages`` on spark-submit or by adding the JAR path
-    to ``extra_jars``.
+    On Dataproc, Application Default Credentials are injected automatically
+    by the cluster; no credential config is needed here.
     """
     builder = SparkSession.builder.appName(app_name)
 
-    merged = {**_SPARK_DEFAULTS, **(spark_conf or {})}
+    base = dict(_SPARK_DEFAULTS)
+    if _is_dataproc():
+        logger.info("Dataproc environment detected — applying GCS connector tuning")
+        base.update(_DATAPROC_GCS_TUNING)
+
+    merged = {**base, **(spark_conf or {})}
     for key, value in merged.items():
         builder = builder.config(key, str(value))
 
@@ -58,7 +103,10 @@ def build_spark_session(
     spark.sparkContext.setLogLevel("WARN")
 
     logger.info(
-        "SparkSession ready: app='%s'  Spark %s", app_name, spark.version
+        "SparkSession ready: app='%s'  Spark %s  master=%s",
+        app_name,
+        spark.version,
+        spark.sparkContext.master,
     )
     return spark
 
@@ -95,10 +143,13 @@ def write_output(df: DataFrame, sink_cfg: Dict[str, Any]) -> None:
     Supported sink config keys
     --------------------------
     format       : output format (parquet | delta | orc | csv | json)
-    path         : output path (local, HDFS, s3a://, gs://, abfs://)
+    path         : output path — local, gs://, HDFS, abfs://
     mode         : write mode (overwrite | append | ignore | error)
-    partition_by : list of column names for directory-partitioning
+    partition_by : list of column names for directory-level partitioning
     options      : dict of format-specific writer options
+
+    GCS note: on Dataproc, ``gs://`` paths are handled natively by the
+    pre-installed GCS connector — no extra configuration is required here.
     """
     fmt = sink_cfg.get("format", "parquet")
     path = sink_cfg["path"]

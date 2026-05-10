@@ -5,6 +5,12 @@ The JSON format mirrors Spark's native schema representation so schemas can
 be round-tripped with `df.schema.json()` / `StructType.fromJson()`.  A
 lightweight custom field-list format is also supported for hand-authored
 configs.
+
+GCS support
+-----------
+Paths starting with ``gs://`` are read directly from Google Cloud Storage.
+The ``google-cloud-storage`` library must be available (pre-installed on
+Dataproc; add to requirements.txt for local dev).
 """
 
 import json
@@ -80,9 +86,44 @@ def _build_struct_type(fields: List[Dict[str, Any]]) -> StructType:
     return StructType(struct_fields)
 
 
+def _read_json_content(path: str) -> dict:
+    """
+    Read and parse a JSON file from a local path or ``gs://`` URI.
+
+    On GCP Dataproc, ``google-cloud-storage`` is pre-installed and Dataproc
+    service-account credentials are available automatically via ADC.
+    """
+    if path.startswith("gs://"):
+        try:
+            from google.cloud import storage as gcs
+        except ImportError as exc:
+            raise ImportError(
+                "google-cloud-storage is required for gs:// paths. "
+                "Install it with: pip install google-cloud-storage"
+            ) from exc
+
+        # gs://bucket-name/path/to/file.json
+        without_scheme = path[5:]
+        bucket_name, _, blob_name = without_scheme.partition("/")
+        client = gcs.Client()
+        blob = client.bucket(bucket_name).blob(blob_name)
+        if not blob.exists():
+            raise FileNotFoundError(f"GCS object not found: {path}")
+        content = blob.download_as_text(encoding="utf-8")
+        logger.info("Schema JSON loaded from GCS: %s", path)
+        return json.loads(content)
+
+    # Local filesystem
+    local = Path(path)
+    if not local.exists():
+        raise FileNotFoundError(f"Schema file not found: {path}")
+    with local.open("r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+
 def load_schema(schema_path: str) -> StructType:
     """
-    Load a StructType schema from a JSON file.
+    Load a StructType schema from a JSON file (local or ``gs://``).
 
     Accepts two formats:
       1. Native Spark schema JSON  – produced by ``df.schema.json()``
@@ -91,32 +132,30 @@ def load_schema(schema_path: str) -> StructType:
 
     Storing the schema in a separate file (rather than hard-coding it) keeps
     the Python source small and lets reviewers audit column definitions
-    independently from pipeline logic.
+    independently from pipeline logic.  On GCP the schema lives in GCS and
+    the path is set per-environment in ``config/env/<env>.yaml``.
     """
-    path = Path(schema_path)
-    if not path.exists():
-        raise FileNotFoundError(f"Schema file not found: {schema_path}")
-
-    with path.open("r", encoding="utf-8") as fh:
-        schema_dict = json.load(fh)
+    schema_dict = _read_json_content(schema_path)
 
     if schema_dict.get("type") == "struct":
         schema = StructType.fromJson(schema_dict)
         logger.info(
-            "Loaded native Spark schema with %d top-level fields", len(schema.fields)
+            "Loaded native Spark schema with %d top-level fields from %s",
+            len(schema.fields), schema_path,
         )
     else:
         fields = schema_dict.get("fields", [])
         schema = _build_struct_type(fields)
         logger.info(
-            "Loaded custom schema with %d top-level fields", len(schema.fields)
+            "Loaded custom schema with %d top-level fields from %s",
+            len(schema.fields), schema_path,
         )
 
     return schema
 
 
 def schema_to_json(schema: StructType, output_path: str) -> None:
-    """Serialize a StructType to a JSON file for later reuse."""
+    """Serialize a StructType to a local JSON file for later reuse or GCS upload."""
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:

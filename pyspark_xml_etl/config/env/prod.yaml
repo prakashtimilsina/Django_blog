@@ -1,0 +1,85 @@
+# =============================================================================
+# Environment configuration — PROD
+# =============================================================================
+# Deployed to: gs://<artifacts-bucket>/pyspark_xml_etl/config/pipeline_config_prod.yaml
+# =============================================================================
+
+app_name: "XMLETLPipeline-PROD"
+env: "prod"
+
+gcp:
+  project: "your-gcp-project-prod"
+  region: "us-central1"
+  dataproc_cluster: "xml-etl-prod"
+  artifacts_bucket: "your-artifacts-bucket-prod"
+
+source:
+  # Glob picks up all daily XML drops; date-partition the path for idempotency
+  path: "gs://your-source-bucket-prod/raw/xml/{{ ds_nodash }}/*.xml"
+  row_tag: "record"
+  reader_options:
+    charset: "UTF-8"
+    treatEmptyValuesAsNulls: "true"
+    attributePrefix: "attr_"
+    valueTag: "_value"
+
+schema:
+  path: "gs://your-artifacts-bucket-prod/pyspark_xml_etl/config/schema_config.json"
+
+quality:
+  max_corrupt_records: 0            # zero tolerance in prod
+
+flatten_structs: true
+
+pivot_specs:
+  - array_col: teeth
+    prefix: tooth_id
+    n: 10
+    element_subfield: id
+    drop_source: true
+  - array_col: procedure_codes
+    prefix: proc_code
+    n: 10
+    element_subfield: null
+    drop_source: true
+  - array_col: diagnoses
+    prefix: diagnosis_icd
+    n: 10
+    element_subfield: icd_code
+    drop_source: true
+  - array_col: medications
+    prefix: medication
+    n: 10
+    element_subfield: name
+    drop_source: true
+
+strict_output_columns: false
+
+performance:
+  # 200 GB XML ÷ ~256 MB per partition ≈ 800 input partitions
+  initial_partitions: 800
+  partition_col: null
+  output_partitions: 400
+  output_partition_col: null
+
+spark_conf:
+  spark.sql.shuffle.partitions: "800"
+  spark.sql.adaptive.enabled: "true"
+  spark.sql.adaptive.coalescePartitions.enabled: "true"
+  spark.sql.adaptive.skewJoin.enabled: "true"
+  spark.serializer: "org.apache.spark.serializer.KryoSerializer"
+  spark.sql.debug.maxToStringFields: "3000"
+  spark.sql.autoBroadcastJoinThreshold: "-1"
+  # Tune GCS connector for large sequential reads
+  spark.hadoop.fs.gs.block.size: "134217728"
+  spark.hadoop.fs.gs.io.buffersize: "8388608"
+
+sink:
+  format: "parquet"
+  path: "gs://your-sink-bucket-prod/processed/xml_etl_output/{{ ds_nodash }}"
+  mode: "overwrite"
+  partition_by:
+    - "year"
+    - "month"
+  options:
+    compression: "snappy"

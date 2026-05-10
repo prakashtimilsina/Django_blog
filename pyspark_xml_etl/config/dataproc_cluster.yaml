@@ -1,0 +1,98 @@
+# =============================================================================
+# Dataproc Cluster Configuration Reference
+# =============================================================================
+# This file documents the cluster specifications used by the Airflow DAG.
+# The DAG (dags/xml_etl_dag.py) reads environment-appropriate values at
+# runtime from the _ephemeral_cluster_config() function.
+#
+# For persistent clusters, create them once with:
+#   gcloud dataproc clusters create <cluster-name> \
+#       --region=<region> \
+#       --project=<project> \
+#       --properties-file=config/dataproc_cluster.yaml
+# =============================================================================
+
+# ── Dataproc image ────────────────────────────────────────────────────────────
+# 2.1-debian11 ships with: Spark 3.3, Hadoop 3.3, Python 3.10, Java 11
+image_version: "2.1-debian11"
+
+# ── Cluster specs per environment ─────────────────────────────────────────────
+environments:
+
+  dev:
+    master:
+      machine_type: n1-standard-4     # 4 vCPU, 15 GB RAM
+      disk_size_gb: 100
+      disk_type: pd-ssd
+      num_instances: 1
+    primary_workers:
+      machine_type: n1-standard-4
+      disk_size_gb: 200
+      disk_type: pd-ssd
+      num_instances: 2
+    secondary_workers:              # preemptible — set 0 for dev to save cost
+      num_instances: 0
+      is_preemptible: true
+
+  qa:
+    master:
+      machine_type: n1-standard-8   # 8 vCPU, 30 GB RAM
+      disk_size_gb: 100
+      disk_type: pd-ssd
+      num_instances: 1
+    primary_workers:
+      machine_type: n1-standard-8
+      disk_size_gb: 200
+      disk_type: pd-ssd
+      num_instances: 4
+    secondary_workers:
+      num_instances: 2
+      is_preemptible: true
+
+  prod:
+    master:
+      machine_type: n1-standard-16  # 16 vCPU, 60 GB RAM
+      disk_size_gb: 500
+      disk_type: pd-ssd
+      num_instances: 1
+    primary_workers:
+      machine_type: n1-standard-16
+      disk_size_gb: 500
+      disk_type: pd-ssd
+      num_instances: 10
+    secondary_workers:              # up to 5 preemptible for burst capacity
+      num_instances: 5
+      is_preemptible: true
+
+# ── Spark properties applied to all clusters ─────────────────────────────────
+spark_properties:
+  spark.sql.shuffle.partitions: "800"
+  spark.sql.adaptive.enabled: "true"
+  spark.sql.adaptive.coalescePartitions.enabled: "true"
+  spark.sql.adaptive.skewJoin.enabled: "true"
+  spark.serializer: "org.apache.spark.serializer.KryoSerializer"
+  spark.sql.debug.maxToStringFields: "3000"
+  spark.sql.autoBroadcastJoinThreshold: "-1"
+  # Dataproc sets the GCS connector automatically — these are extra tuning:
+  spark.hadoop.fs.gs.block.size: "134217728"        # 128 MB GCS block size
+  spark.hadoop.fs.gs.implicit.dir.repair.enable: "false"
+  spark.hadoop.fs.gs.io.buffersize: "8388608"       # 8 MB read buffer
+
+# ── Autoscaling (prod only — attach via gcloud after cluster creation) ────────
+# gcloud dataproc autoscaling-policies import xml-etl-autoscale \
+#     --source=config/autoscale_policy.yaml --region=<region>
+autoscaling:
+  minInstances: 2
+  maxInstances: 20
+  scaleUpFactor: 1.0
+  scaleDownFactor: 1.0
+  scaleUpMinWorkerFraction: 0.0
+  scaleDownMinWorkerFraction: 0.0
+  cooldownPeriod: 2m
+
+# ── Initialization action ─────────────────────────────────────────────────────
+# scripts/deploy_to_gcs.sh uploads install_jars.sh to GCS.
+# The DAG references this script so the spark-xml JAR is installed on all nodes.
+init_actions:
+  install_jars_script: "gs://<artifacts-bucket>/pyspark_xml_etl/init/install_jars.sh"
+  timeout_seconds: 300

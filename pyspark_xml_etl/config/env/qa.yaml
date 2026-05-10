@@ -1,0 +1,79 @@
+# =============================================================================
+# Environment configuration — QA
+# =============================================================================
+# Deployed to: gs://<artifacts-bucket>/pyspark_xml_etl/config/pipeline_config_qa.yaml
+# =============================================================================
+
+app_name: "XMLETLPipeline-QA"
+env: "qa"
+
+gcp:
+  project: "your-gcp-project-qa"
+  region: "us-central1"
+  dataproc_cluster: "xml-etl-qa"
+  artifacts_bucket: "your-artifacts-bucket-qa"
+
+source:
+  path: "gs://your-source-bucket-qa/raw/xml/*.xml"
+  row_tag: "record"
+  reader_options:
+    charset: "UTF-8"
+    treatEmptyValuesAsNulls: "true"
+    attributePrefix: "attr_"
+    valueTag: "_value"
+
+schema:
+  path: "gs://your-artifacts-bucket-qa/pyspark_xml_etl/config/schema_config.json"
+
+quality:
+  max_corrupt_records: 100
+
+flatten_structs: true
+
+pivot_specs:
+  - array_col: teeth
+    prefix: tooth_id
+    n: 10
+    element_subfield: id
+    drop_source: true
+  - array_col: procedure_codes
+    prefix: proc_code
+    n: 10
+    element_subfield: null
+    drop_source: true
+  - array_col: diagnoses
+    prefix: diagnosis_icd
+    n: 10
+    element_subfield: icd_code
+    drop_source: true
+  - array_col: medications
+    prefix: medication
+    n: 10
+    element_subfield: name
+    drop_source: true
+
+strict_output_columns: false
+
+performance:
+  initial_partitions: 200
+  partition_col: null
+  output_partitions: 100
+  output_partition_col: null
+
+spark_conf:
+  spark.sql.shuffle.partitions: "400"
+  spark.sql.adaptive.enabled: "true"
+  spark.sql.adaptive.coalescePartitions.enabled: "true"
+  spark.serializer: "org.apache.spark.serializer.KryoSerializer"
+  spark.sql.debug.maxToStringFields: "3000"
+  spark.sql.autoBroadcastJoinThreshold: "-1"
+
+sink:
+  format: "parquet"
+  path: "gs://your-sink-bucket-qa/processed/xml_etl_output"
+  mode: "overwrite"
+  partition_by:
+    - "year"
+    - "month"
+  options:
+    compression: "snappy"

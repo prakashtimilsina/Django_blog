@@ -1,26 +1,35 @@
 """
 PySpark XML ETL Pipeline — main entry point.
 
-Usage
------
+Local usage
+-----------
     spark-submit \\
         --packages com.databricks:spark-xml_2.12:0.17.0 \\
         src/etl_pipeline.py \\
         --config config/pipeline_config.yaml
 
+GCP Dataproc usage (submitted by the Airflow DAG)
+--------------------------------------------------
+    spark-submit \\
+        --packages com.databricks:spark-xml_2.12:0.17.0 \\
+        gs://<bucket>/pyspark_xml_etl/scripts/etl_pipeline.py \\
+        --config gs://<bucket>/pyspark_xml_etl/config/pipeline_config_prod.yaml
+
 The pipeline is fully configuration-driven: schema, source paths, pivot
 rules, performance tuning, and sink settings all live in the YAML config.
+The config path supports both local filesystem and ``gs://`` URIs.
 No column names are hard-coded in this file.
 """
 
 import argparse
+import io
 import logging
 import sys
 from pathlib import Path
 
 import yaml
 
-# Allow running directly from the src/ directory
+# Allow running directly from the src/ directory or from GCS-deployed src.zip
 sys.path.insert(0, str(Path(__file__).parent))
 
 from flattener import flatten_struct, select_output_columns
@@ -38,14 +47,35 @@ logging.basicConfig(
 logger = logging.getLogger("etl_pipeline")
 
 
-# ── Config loading ────────────────────────────────────────────────────────────
+# ── Config loading (local + GCS) ──────────────────────────────────────────────
 
-def load_config(config_path: str) -> dict:
+def _read_yaml_text(config_path: str) -> str:
+    """Return raw YAML text from a local path or a ``gs://`` URI."""
+    if config_path.startswith("gs://"):
+        try:
+            from google.cloud import storage as gcs
+        except ImportError as exc:
+            raise ImportError(
+                "google-cloud-storage is required for gs:// config paths."
+            ) from exc
+        without_scheme = config_path[5:]
+        bucket_name, _, blob_name = without_scheme.partition("/")
+        client = gcs.Client()
+        blob = client.bucket(bucket_name).blob(blob_name)
+        if not blob.exists():
+            raise FileNotFoundError(f"GCS config not found: {config_path}")
+        return blob.download_as_text(encoding="utf-8")
+
     path = Path(config_path)
     if not path.exists():
         raise FileNotFoundError(f"Pipeline config not found: {config_path}")
-    with path.open("r", encoding="utf-8") as fh:
-        cfg = yaml.safe_load(fh)
+    return path.read_text(encoding="utf-8")
+
+
+def load_config(config_path: str) -> dict:
+    """Load the YAML pipeline config from a local path or ``gs://`` URI."""
+    raw = _read_yaml_text(config_path)
+    cfg = yaml.safe_load(raw)
     logger.info("Config loaded from %s", config_path)
     return cfg
 

@@ -1,11 +1,31 @@
-# Core
+# =============================================================================
+# PySpark XML ETL — Python dependencies
+# =============================================================================
+
+# ── PySpark ───────────────────────────────────────────────────────────────────
+# On Dataproc, PySpark is pre-installed — do NOT install it on the cluster.
+# Pin here for local dev / CI only.
 pyspark>=3.4.0
+
+# ── Config ────────────────────────────────────────────────────────────────────
 pyyaml>=6.0
 
-# Testing
+# ── GCP ───────────────────────────────────────────────────────────────────────
+# Required for reading gs:// paths in schema_builder and etl_pipeline.
+# Pre-installed on Dataproc; install locally with:  pip install google-cloud-storage
+google-cloud-storage>=2.10.0
+
+# ── Airflow + GCP provider (Cloud Composer environment) ───────────────────────
+# Install these in your LOCAL Airflow dev environment for DAG development.
+# Cloud Composer manages its own Airflow installation — do NOT pip-install
+# these on Dataproc workers.
+apache-airflow>=2.6.0
+apache-airflow-providers-google>=10.1.0
+
+# ── Testing ───────────────────────────────────────────────────────────────────
 pytest>=7.4.0
 pytest-cov>=4.1.0
 
-# Optional — linting
+# ── Optional linting ──────────────────────────────────────────────────────────
 ruff>=0.1.0
 mypy>=1.5.0
