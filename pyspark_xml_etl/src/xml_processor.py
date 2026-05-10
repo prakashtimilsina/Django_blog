@@ -13,10 +13,42 @@ Key design choices
   land in _corrupt_record for downstream triage.
 - attributePrefix / valueTag follow Databricks conventions so attribute-
   heavy XML maps cleanly to DataFrame columns.
+
+Namespace handling
+------------------
+spark-xml with ``ignoreNamespace=true`` strips all namespace prefixes from
+element and attribute names before they are mapped to DataFrame columns.
+This means:
+
+  XML source                        DataFrame column
+  --------------------------------  ----------------
+  <ehr:record_id>REC-001</...>      record_id
+  <dental:tooth><dental:id>11<...>  tooth.id (inside the teeth array)
+  xsi:nil="true" on an element      element reads as null (correct)
+  xmlns:ehr="http://..."            excluded automatically
+
+Rules you must follow when namespaces are present
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+1. ``row_tag`` must be the LOCAL name only — never a prefixed name.
+   Correct:   row_tag = "record"
+   Wrong:     row_tag = "ehr:record"
+
+2. Schema field names must use LOCAL names only (no prefixes).
+   The schema_config.json already follows this rule.
+
+3. If two elements in DIFFERENT namespaces share the same local name,
+   spark-xml will treat them as the same field after stripping prefixes.
+   This is a known spark-xml limitation.  Workaround: rename one element
+   in a pre-processing step, or use a namespace-aware SAX parser for that
+   sub-tree and pass the result to this pipeline as JSON/Parquet.
+
+4. xsi:type attributes are stripped along with the namespace prefix;
+   they will appear as attr_type if attributePrefix="attr_".
+   Add "xsi:type" to excludeAttribute in reader_options to suppress them.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 from pyspark.sql import DataFrame, SparkSession
 from pyspark.sql.types import StructType
@@ -28,12 +60,22 @@ _SAFE_READER_DEFAULTS: Dict[str, str] = {
     "columnNameOfCorruptRecord": "_corrupt_record",
     "inferSchema": "false",
     "multiLine": "true",
+    # Strip all namespace prefixes from element and attribute local names.
+    # Schema field names and rowTag must use local names only (see module doc).
     "ignoreNamespace": "true",
     "attributePrefix": "attr_",
     "valueTag": "_value",
     "treatEmptyValuesAsNulls": "true",
     "charset": "UTF-8",
 }
+
+# Attributes that are purely namespace bookkeeping and should never become
+# DataFrame columns.  Passed to excludeAttribute when namespaces are active.
+_NAMESPACE_NOISE_ATTRS: List[str] = [
+    "xmlns",
+    "xsi:schemaLocation",
+    "xsi:noNamespaceSchemaLocation",
+]
 
 
 def read_xml(
@@ -50,14 +92,26 @@ def read_xml(
     ----------
     spark    : active SparkSession (must have spark-xml JAR loaded)
     path     : glob-compatible path, e.g. ``s3a://bucket/raw/*.xml``
-    row_tag  : XML element that maps to one DataFrame row, e.g. ``"record"``
-    schema   : pre-defined StructType — mandatory for 200 GB+ files
-    options  : caller-supplied reader options; override the safe defaults
+    row_tag  : XML element that maps to one DataFrame row.
+               Must be the LOCAL name only — never a namespace-prefixed name.
+               e.g. ``"record"`` not ``"ehr:record"``
+    schema   : pre-defined StructType — mandatory for 200 GB+ files.
+               All field names must be local names (no namespace prefixes).
+    options  : caller-supplied reader options; override the safe defaults.
+               Use ``excludeAttribute`` to suppress unwanted attributes, e.g.:
+               ``{"excludeAttribute": "xsi:type,xsi:schemaLocation"}``
 
     Returns
     -------
     DataFrame with one row per ``row_tag`` element
     """
+    if ":" in row_tag:
+        raise ValueError(
+            f"row_tag '{row_tag}' contains a namespace prefix. "
+            "Use the local name only (e.g. 'record', not 'ehr:record'). "
+            "spark-xml with ignoreNamespace=true matches on local names."
+        )
+
     merged = {**_SAFE_READER_DEFAULTS, "rowTag": row_tag}
     if options:
         merged.update({k: str(v) for k, v in options.items()})
@@ -73,6 +127,37 @@ def read_xml(
 
     logger.info("XML loaded — %d top-level columns", len(df.columns))
     return df
+
+
+def read_xml_namespaced(
+    spark: SparkSession,
+    path: str,
+    row_tag: str,
+    schema: StructType,
+    exclude_attrs: Optional[List[str]] = None,
+    options: Optional[Dict[str, Any]] = None,
+) -> DataFrame:
+    """
+    Convenience wrapper for XML files with heavy namespace usage.
+
+    Identical to ``read_xml`` but pre-configures ``excludeAttribute`` to
+    suppress common namespace-declaration attributes (``xmlns``,
+    ``xsi:schemaLocation``, etc.) that would otherwise produce noisy columns.
+
+    Parameters
+    ----------
+    exclude_attrs : additional attribute names to suppress beyond the defaults;
+                   e.g. ``["xsi:type", "xsi:nil"]``
+    """
+    combined = list(_NAMESPACE_NOISE_ATTRS)
+    if exclude_attrs:
+        combined.extend(exclude_attrs)
+
+    ns_options = {"excludeAttribute": ",".join(combined)}
+    if options:
+        ns_options.update(options)
+
+    return read_xml(spark, path, row_tag, schema, options=ns_options)
 
 
 def validate_corrupt_records(df: DataFrame, max_corrupt: int = 0) -> None:

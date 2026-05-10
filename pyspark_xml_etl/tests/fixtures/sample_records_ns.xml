@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Namespaced XML fixture for testing the ETL pipeline.
+
+  This file demonstrates the four namespace patterns found in real-world
+  healthcare/enterprise XML:
+
+  1. Default namespace  (xmlns="...")       — no prefix on elements
+  2. Prefixed namespace (xmlns:ehr="...")   — explicit ns: prefix
+  3. Schema-instance   (xsi:nil / xsi:type) — W3C standard attributes
+  4. Mixed content     (elements + attributes in different namespaces)
+
+  With ignoreNamespace="true" in spark-xml, ALL of the above are stripped
+  to local names before mapping to DataFrame columns.  The schema JSON and
+  pipeline config reference ONLY local names (e.g. "record", not "ehr:record").
+-->
+<ehr:records
+    xmlns:ehr="http://example.com/ehr/v2"
+    xmlns:dental="http://example.com/dental/v1"
+    xmlns:billing="http://example.com/billing/v1"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <ehr:record>
+    <ehr:record_id>REC-NS-001</ehr:record_id>
+    <ehr:source_system>EHR-NAMESPACE</ehr:source_system>
+    <ehr:batch_id>BATCH-NS-2026</ehr:batch_id>
+    <ehr:year>2026</ehr:year>
+    <ehr:month>3</ehr:month>
+
+    <!-- Deeply nested struct with mixed namespace prefixes -->
+    <ehr:patient>
+      <ehr:id>PAT-NS-001</ehr:id>
+      <ehr:first_name>Alice</ehr:first_name>
+      <ehr:last_name>Namespace</ehr:last_name>
+      <ehr:date_of_birth>1990-06-20</ehr:date_of_birth>
+      <ehr:gender>F</ehr:gender>
+
+      <ehr:address>
+        <ehr:street>789 Namespace Blvd</ehr:street>
+        <ehr:city>Xmltown</ehr:city>
+        <ehr:state>CA</ehr:state>
+        <ehr:zip>90210</ehr:zip>
+        <ehr:country>US</ehr:country>
+      </ehr:address>
+
+      <ehr:contact>
+        <ehr:phone_primary>555-0200</ehr:phone_primary>
+        <ehr:email>alice@example.com</ehr:email>
+      </ehr:contact>
+
+      <ehr:insurance>
+        <billing:provider>Aetna</billing:provider>
+        <billing:policy_id>AE-112233</billing:policy_id>
+        <billing:plan_type>HMO</billing:plan_type>
+      </ehr:insurance>
+    </ehr:patient>
+
+    <ehr:visit>
+      <ehr:visit_id>VST-NS-001</ehr:visit_id>
+      <ehr:visit_date>2026-03-01</ehr:visit_date>
+      <ehr:facility_id>FAC-NS-01</ehr:facility_id>
+      <ehr:provider_npi>9876543210</ehr:provider_npi>
+      <ehr:visit_type>ROUTINE</ehr:visit_type>
+      <ehr:duration_mins>60</ehr:duration_mins>
+    </ehr:visit>
+
+    <!-- Array of structs — each element uses dental: prefix -->
+    <dental:teeth>
+      <dental:tooth><dental:id>11</dental:id><dental:quadrant>UL</dental:quadrant><dental:condition>HEALTHY</dental:condition></dental:tooth>
+      <dental:tooth><dental:id>12</dental:id><dental:quadrant>UL</dental:quadrant><dental:condition>FILLING</dental:condition></dental:tooth>
+      <dental:tooth><dental:id>21</dental:id><dental:quadrant>UR</dental:quadrant><dental:condition>CROWN</dental:condition></dental:tooth>
+    </dental:teeth>
+
+    <!-- xsi:nil marks an absent optional element — reads as null -->
+    <ehr:diagnoses xsi:nil="true"/>
+
+    <!-- Scalar array — each <code> uses default ehr: prefix -->
+    <ehr:procedure_codes>
+      <ehr:code>D0120</ehr:code>
+      <ehr:code>D1110</ehr:code>
+    </ehr:procedure_codes>
+
+    <!-- No medications in this record — absent element → null -->
+
+    <ehr:vitals>
+      <ehr:height_cm>165.0</ehr:height_cm>
+      <ehr:weight_kg>60.0</ehr:weight_kg>
+      <ehr:bmi>22.0</ehr:bmi>
+      <ehr:bp_systolic>118</ehr:bp_systolic>
+      <ehr:bp_diastolic>76</ehr:bp_diastolic>
+    </ehr:vitals>
+
+    <billing:billing>
+      <billing:claim_id>CLM-NS-001</billing:claim_id>
+      <billing:billed_amount>280.00</billing:billed_amount>
+      <billing:status>SUBMITTED</billing:status>
+    </billing:billing>
+  </ehr:record>
+
+  <ehr:record>
+    <ehr:record_id>REC-NS-002</ehr:record_id>
+    <ehr:source_system>EHR-NAMESPACE</ehr:source_system>
+    <ehr:batch_id>BATCH-NS-2026</ehr:batch_id>
+    <ehr:year>2026</ehr:year>
+    <ehr:month>4</ehr:month>
+
+    <ehr:patient>
+      <ehr:id>PAT-NS-002</ehr:id>
+      <ehr:first_name>Bob</ehr:first_name>
+      <ehr:last_name>Schema</ehr:last_name>
+      <ehr:date_of_birth>1965-09-10</ehr:date_of_birth>
+      <ehr:gender>M</ehr:gender>
+      <ehr:address>
+        <ehr:street>1 Default NS Ave</ehr:street>
+        <ehr:city>Prefixburg</ehr:city>
+        <ehr:state>TX</ehr:state>
+        <ehr:zip>75001</ehr:zip>
+        <ehr:country>US</ehr:country>
+      </ehr:address>
+    </ehr:patient>
+
+    <ehr:visit>
+      <ehr:visit_id>VST-NS-002</ehr:visit_id>
+      <ehr:visit_date>2026-04-22</ehr:visit_date>
+      <ehr:facility_id>FAC-NS-02</ehr:facility_id>
+      <ehr:visit_type>EMERGENCY</ehr:visit_type>
+      <ehr:duration_mins>120</ehr:duration_mins>
+    </ehr:visit>
+
+    <dental:teeth>
+      <dental:tooth><dental:id>36</dental:id><dental:quadrant>LL</dental:quadrant><dental:condition>ABSCESS</dental:condition></dental:tooth>
+      <dental:tooth><dental:id>46</dental:id><dental:quadrant>LR</dental:quadrant><dental:condition>MISSING</dental:condition></dental:tooth>
+      <dental:tooth><dental:id>47</dental:id><dental:quadrant>LR</dental:quadrant><dental:condition>HEALTHY</dental:condition></dental:tooth>
+    </dental:teeth>
+
+    <ehr:diagnoses>
+      <ehr:diagnosis>
+        <ehr:icd_code>K04.7</ehr:icd_code>
+        <ehr:description>Periapical abscess without sinus</ehr:description>
+        <ehr:is_primary>true</ehr:is_primary>
+      </ehr:diagnosis>
+    </ehr:diagnoses>
+
+    <ehr:procedure_codes>
+      <ehr:code>D7140</ehr:code>
+    </ehr:procedure_codes>
+
+    <billing:billing>
+      <billing:claim_id>CLM-NS-002</billing:claim_id>
+      <billing:billed_amount>615.00</billing:billed_amount>
+      <billing:status>PENDING</billing:status>
+    </billing:billing>
+  </ehr:record>
+
+</ehr:records>
