@@ -1,0 +1,143 @@
+# =============================================================================
+# PySpark XML ETL Pipeline — Configuration
+# =============================================================================
+# All paths support local filesystem, HDFS (hdfs://), S3 (s3a://),
+# GCS (gs://), and ADLS Gen2 (abfs://) URIs.
+# =============================================================================
+
+app_name: "XMLETLPipeline"
+
+# ── Spark tuning ──────────────────────────────────────────────────────────────
+# These override driver/executor defaults; executor-level memory and core
+# counts are set on spark-submit or in the cluster config, not here.
+spark_conf:
+  spark.sql.shuffle.partitions: "800"
+  spark.sql.adaptive.enabled: "true"
+  spark.sql.adaptive.coalescePartitions.enabled: "true"
+  spark.sql.adaptive.skewJoin.enabled: "true"
+  spark.serializer: "org.apache.spark.serializer.KryoSerializer"
+  # Accommodate schemas with 1 000–3 000 columns
+  spark.sql.debug.maxToStringFields: "3000"
+  # Disable broadcast join to prevent OOM on very wide DataFrames
+  spark.sql.autoBroadcastJoinThreshold: "-1"
+
+# ── Source ────────────────────────────────────────────────────────────────────
+source:
+  # Glob pattern — spark-xml supports multiple files in one read
+  path: "s3a://your-bucket/raw/incoming/*.xml"
+
+  # The XML element that represents a single record / row
+  row_tag: "record"
+
+  # Options forwarded directly to the spark-xml DataFrameReader
+  reader_options:
+    charset: "UTF-8"
+    treatEmptyValuesAsNulls: "true"
+    # Prefix applied to XML attribute names to avoid collision with elements
+    attributePrefix: "attr_"
+    # Column name for the text value of a mixed-content element
+    valueTag: "_value"
+    # Sampling ratio used only if schema is inferred (always "false" here)
+    samplingRatio: "1.0"
+
+# ── Schema ────────────────────────────────────────────────────────────────────
+# The schema JSON keeps column definitions out of Python source so that
+# large schemas (1 000–3 000 fields) can be reviewed and version-controlled
+# independently of pipeline logic.
+schema:
+  path: "config/schema_config.json"
+
+# ── Data quality ──────────────────────────────────────────────────────────────
+quality:
+  # Pipeline aborts if corrupt records exceed this count (0 = zero tolerance)
+  max_corrupt_records: 100
+
+# ── Transformation ────────────────────────────────────────────────────────────
+
+# Recursively flatten all StructType columns to top-level columns.
+# Ancestors are joined with double-underscores: patient__address__city
+flatten_structs: true
+
+# Pivot repeating XML array elements into numbered flat columns.
+# Each entry produces exactly n output columns; extras are null-padded.
+#
+# Fields per spec:
+#   array_col        : ArrayType column name in the DataFrame
+#   prefix           : output column name prefix (snake_case)
+#   n                : number of positions to extract  (required)
+#   element_subfield : for StructType arrays, the sub-field to pull;
+#                      omit (or null) for scalar (string/int) arrays
+#   drop_source      : remove the source array col after pivoting (default: false)
+pivot_specs:
+  # Dental example — 10 tooth positions
+  - array_col: teeth
+    prefix: tooth_id
+    n: 10
+    element_subfield: id
+    drop_source: true
+
+  # Up to 10 procedure codes per record (scalar array)
+  - array_col: procedure_codes
+    prefix: proc_code
+    n: 10
+    element_subfield: null
+    drop_source: true
+
+  # Diagnoses with ICD codes
+  - array_col: diagnoses
+    prefix: diagnosis_icd
+    n: 10
+    element_subfield: icd_code
+    drop_source: true
+
+  # Medications (struct array)
+  - array_col: medications
+    prefix: medication
+    n: 10
+    element_subfield: name
+    drop_source: true
+
+# ── Output column selection ───────────────────────────────────────────────────
+# Uncomment and populate to explicitly select and order the output columns.
+# Columns listed here that are absent from the DataFrame are skipped with a
+# warning (set strict_output_columns: true to raise instead).
+#
+# output_columns:
+#   - patient_id
+#   - visit_date
+#   - tooth_id_1
+#   - tooth_id_2
+#   ...
+
+strict_output_columns: false
+
+# ── Performance ───────────────────────────────────────────────────────────────
+performance:
+  # Repartition immediately after reading XML.
+  # Rule of thumb: 1 partition per 128–256 MB of compressed input.
+  # For 200 GB uncompressed XML → 400–800 partitions.
+  initial_partitions: 400
+
+  # Column to hash-partition by for better data locality downstream.
+  # Remove (or set to null) if no natural partition key exists.
+  partition_col: null
+
+  # Partition count before the final write.
+  # Keep high to produce reasonably-sized Parquet files (~256 MB each).
+  output_partitions: 200
+  output_partition_col: null
+
+# ── Sink ──────────────────────────────────────────────────────────────────────
+sink:
+  format: "parquet"            # parquet | delta | orc | csv | json
+  path: "s3a://your-bucket/processed/output"
+  mode: "overwrite"            # overwrite | append | ignore | error
+
+  # Directory-level partitioning (written as subdirectories)
+  partition_by:
+    - "year"
+    - "month"
+
+  # Format-specific writer options
+  options:
+    compression: "snappy"      # snappy | gzip | zstd | none
