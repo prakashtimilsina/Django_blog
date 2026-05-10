@@ -1,0 +1,654 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Deep nested + multi-namespace XML fixture
+  ==========================================
+  Namespaces  : ehr  dental  lab  pharma  billing  xsi
+  Max depth   : 8 levels  (record → patient → demographics → contact
+                            → addresses → address → coordinates → latitude)
+  Nested arrays: tooth.surfaces  (array inside a struct inside an array)
+  xsi:nil     : secondary insurance, tooth restorations, absent panels
+
+  With ignoreNamespace="true" all prefixes are stripped before mapping to
+  DataFrame columns, so the schema JSON uses only local element names.
+
+  Depth map:
+    L1  record
+    L2    patient | clinical | lab_results | medications | billing
+    L3      demographics | examination | treatments | panels | header | lines | totals | medication
+    L4        personal | contact | insurance | periodontal | panel | line | prescriber | dispense_info
+    L5          name | addresses | phones | primary | secondary | teeth | tests | adjustments
+    L6            address | tooth | test | adjustment
+    L7              coordinates | surfaces | xray | restorations | reference_range
+    L8                surface                                         ← 8 levels
+-->
+<ehr:records
+    xmlns:ehr="http://example.com/ehr/v3"
+    xmlns:dental="http://example.com/dental/v2"
+    xmlns:lab="http://example.com/laboratory/v1"
+    xmlns:pharma="http://example.com/pharmacy/v1"
+    xmlns:billing="http://example.com/billing/v2"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       RECORD 1 — full data, primary + no secondary insurance,
+                  2 teeth each with multiple surfaces (nested array),
+                  2 lab panels, 1 medication, 2 billing lines
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <ehr:record>
+    <ehr:record_id>REC-DEEP-001</ehr:record_id>
+    <ehr:source_system>DEEP-EHR</ehr:source_system>
+    <ehr:batch_id>BATCH-DEEP-2026</ehr:batch_id>
+    <ehr:year>2026</ehr:year>
+    <ehr:month>5</ehr:month>
+
+    <!-- L2 ── patient ──────────────────────────────────────────────────── -->
+    <ehr:patient>
+
+      <!-- L3 ── demographics ─────────────────────────────────────────── -->
+      <ehr:demographics>
+
+        <!-- L4 ── personal ─────────────────────────────────────────── -->
+        <ehr:personal>
+          <!-- L5 ── name struct ──────────────────────────────────── -->
+          <ehr:name>
+            <ehr:prefix>Dr.</ehr:prefix>
+            <ehr:first>Jane</ehr:first>
+            <ehr:middle>Marie</ehr:middle>
+            <ehr:last>Doe</ehr:last>
+            <ehr:suffix xsi:nil="true"/>
+          </ehr:name>
+          <ehr:date_of_birth>1985-03-15</ehr:date_of_birth>
+          <ehr:gender>F</ehr:gender>
+          <ehr:race>White</ehr:race>
+          <ehr:ethnicity>Non-Hispanic</ehr:ethnicity>
+          <ehr:marital_status>MARRIED</ehr:marital_status>
+          <ehr:ssn_last4>5678</ehr:ssn_last4>
+          <ehr:language>EN</ehr:language>
+          <ehr:deceased>false</ehr:deceased>
+        </ehr:personal>
+
+        <!-- L4 ── contact ──────────────────────────────────────────── -->
+        <ehr:contact>
+
+          <!-- L5 ── addresses (array of structs) ──────────────── -->
+          <ehr:addresses>
+
+            <!-- L6 ── address ──────────────────────────────── -->
+            <ehr:address>
+              <ehr:addr_type>HOME</ehr:addr_type>
+              <ehr:street1>123 Maple St</ehr:street1>
+              <ehr:street2>Apt 4B</ehr:street2>
+              <ehr:city>Springfield</ehr:city>
+              <ehr:state>IL</ehr:state>
+              <ehr:zip>62701</ehr:zip>
+              <ehr:country>US</ehr:country>
+              <ehr:active_since>2018-06-01</ehr:active_since>
+              <!-- L7 ── coordinates ──────────────────────── -->
+              <ehr:coordinates>
+                <ehr:latitude>39.7817</ehr:latitude>
+                <ehr:longitude>-89.6501</ehr:longitude>
+                <ehr:accuracy_m>10</ehr:accuracy_m>
+              </ehr:coordinates>
+            </ehr:address>
+
+            <!-- L6 ── second address (coordinates absent) ─── -->
+            <ehr:address>
+              <ehr:addr_type>WORK</ehr:addr_type>
+              <ehr:street1>456 Office Blvd</ehr:street1>
+              <ehr:street2 xsi:nil="true"/>
+              <ehr:city>Springfield</ehr:city>
+              <ehr:state>IL</ehr:state>
+              <ehr:zip>62702</ehr:zip>
+              <ehr:country>US</ehr:country>
+              <ehr:active_since>2020-01-15</ehr:active_since>
+              <ehr:coordinates xsi:nil="true"/>
+            </ehr:address>
+
+          </ehr:addresses>
+
+          <!-- L5 ── phones (scalar array) ──────────────────── -->
+          <ehr:phones>
+            <ehr:phone>555-0100</ehr:phone>
+            <ehr:phone>555-0101</ehr:phone>
+          </ehr:phones>
+
+          <ehr:email>jane.doe@example.com</ehr:email>
+          <ehr:preferred_contact>EMAIL</ehr:preferred_contact>
+
+        </ehr:contact>
+
+        <!-- L4 ── insurance ────────────────────────────────────────── -->
+        <ehr:insurance>
+
+          <!-- L5 ── primary ──────────────────────────────────── -->
+          <ehr:primary>
+            <ehr:payer_name>BlueCross BlueShield</ehr:payer_name>
+            <ehr:policy_id>BC-9900123</ehr:policy_id>
+            <ehr:group_id>GRP-001</ehr:group_id>
+            <ehr:plan_type>PPO</ehr:plan_type>
+            <ehr:effective_date>2025-01-01</ehr:effective_date>
+            <ehr:term_date>2025-12-31</ehr:term_date>
+            <!-- L6 ── coverage ──────────────────────────── -->
+            <ehr:coverage>
+              <ehr:deductible_annual>1000.00</ehr:deductible_annual>
+              <ehr:deductible_met>350.00</ehr:deductible_met>
+              <ehr:copay>25.00</ehr:copay>
+              <ehr:coinsurance_pct>80</ehr:coinsurance_pct>
+              <ehr:out_of_pocket_max>5000.00</ehr:out_of_pocket_max>
+              <ehr:out_of_pocket_met>350.00</ehr:out_of_pocket_met>
+            </ehr:coverage>
+          </ehr:primary>
+
+          <!-- L5 ── secondary (absent) ──────────────────────── -->
+          <ehr:secondary xsi:nil="true"/>
+
+        </ehr:insurance>
+
+      </ehr:demographics>
+    </ehr:patient>
+
+    <!-- L2 ── clinical (dental namespace) ───────────────────────────────── -->
+    <dental:clinical>
+
+      <!-- L3 ── examination ─────────────────────────────────────────── -->
+      <dental:examination>
+        <dental:exam_date>2026-05-10</dental:exam_date>
+        <dental:exam_type>COMPREHENSIVE</dental:exam_type>
+        <dental:provider_npi>1234567890</dental:provider_npi>
+
+        <!-- L4 ── periodontal ──────────────────────────────────────── -->
+        <dental:periodontal>
+          <dental:overall_score>MILD</dental:overall_score>
+          <dental:bone_loss_pct>10</dental:bone_loss_pct>
+
+          <!-- L5 ── teeth (array of structs) ─────────────────────── -->
+          <dental:teeth>
+
+            <!-- L6 ── tooth 11 ───────────────────────────────── -->
+            <dental:tooth>
+              <dental:number>11</dental:number>
+              <dental:name>Upper Left Central Incisor</dental:name>
+              <dental:arch>UPPER</dental:arch>
+              <dental:quadrant>UL</dental:quadrant>
+              <dental:type>PERMANENT</dental:type>
+              <dental:mobility_grade>0</dental:mobility_grade>
+              <dental:furcation_class>NONE</dental:furcation_class>
+
+              <!-- L7 ── surfaces (NESTED ARRAY of structs) ─── -->
+              <dental:surfaces>
+                <!-- L8 ── surface ─────────────────────── -->
+                <dental:surface>
+                  <dental:name>BUCCAL</dental:name>
+                  <dental:pocket_depth_mm>2</dental:pocket_depth_mm>
+                  <dental:recession_mm>0</dental:recession_mm>
+                  <dental:bleeding>false</dental:bleeding>
+                  <dental:plaque>false</dental:plaque>
+                  <dental:calculus>NONE</dental:calculus>
+                  <dental:gingival_margin>0</dental:gingival_margin>
+                </dental:surface>
+                <dental:surface>
+                  <dental:name>LINGUAL</dental:name>
+                  <dental:pocket_depth_mm>3</dental:pocket_depth_mm>
+                  <dental:recession_mm>0</dental:recession_mm>
+                  <dental:bleeding>false</dental:bleeding>
+                  <dental:plaque>true</dental:plaque>
+                  <dental:calculus>TRACE</dental:calculus>
+                  <dental:gingival_margin>0</dental:gingival_margin>
+                </dental:surface>
+                <dental:surface>
+                  <dental:name>MESIAL</dental:name>
+                  <dental:pocket_depth_mm>2</dental:pocket_depth_mm>
+                  <dental:recession_mm>0</dental:recession_mm>
+                  <dental:bleeding>false</dental:bleeding>
+                  <dental:plaque>false</dental:plaque>
+                  <dental:calculus>NONE</dental:calculus>
+                  <dental:gingival_margin>0</dental:gingival_margin>
+                </dental:surface>
+              </dental:surfaces>
+
+              <!-- L7 ── xray ─────────────────────────────── -->
+              <dental:xray>
+                <dental:bone_loss>NONE</dental:bone_loss>
+                <dental:furcation>NONE</dental:furcation>
+                <dental:periapical>NORMAL</dental:periapical>
+                <dental:calculus_visible>false</dental:calculus_visible>
+              </dental:xray>
+
+              <!-- L7 ── restorations (array of structs) ──── -->
+              <dental:restorations>
+                <dental:restoration>
+                  <dental:material_type>COMPOSITE</dental:material_type>
+                  <dental:surface_code>MO</dental:surface_code>
+                  <dental:date_placed>2022-03-01</dental:date_placed>
+                  <dental:condition>GOOD</dental:condition>
+                  <dental:lot_number>LOT2022A</dental:lot_number>
+                </dental:restoration>
+              </dental:restorations>
+
+            </dental:tooth>
+
+            <!-- L6 ── tooth 21 ───────────────────────────────── -->
+            <dental:tooth>
+              <dental:number>21</dental:number>
+              <dental:name>Upper Right Central Incisor</dental:name>
+              <dental:arch>UPPER</dental:arch>
+              <dental:quadrant>UR</dental:quadrant>
+              <dental:type>PERMANENT</dental:type>
+              <dental:mobility_grade>0</dental:mobility_grade>
+              <dental:furcation_class>NONE</dental:furcation_class>
+
+              <dental:surfaces>
+                <dental:surface>
+                  <dental:name>BUCCAL</dental:name>
+                  <dental:pocket_depth_mm>2</dental:pocket_depth_mm>
+                  <dental:recession_mm>0</dental:recession_mm>
+                  <dental:bleeding>false</dental:bleeding>
+                  <dental:plaque>false</dental:plaque>
+                  <dental:calculus>NONE</dental:calculus>
+                  <dental:gingival_margin>0</dental:gingival_margin>
+                </dental:surface>
+                <dental:surface>
+                  <dental:name>DISTAL</dental:name>
+                  <dental:pocket_depth_mm>4</dental:pocket_depth_mm>
+                  <dental:recession_mm>1</dental:recession_mm>
+                  <dental:bleeding>true</dental:bleeding>
+                  <dental:plaque>true</dental:plaque>
+                  <dental:calculus>LIGHT</dental:calculus>
+                  <dental:gingival_margin>-1</dental:gingival_margin>
+                </dental:surface>
+              </dental:surfaces>
+
+              <dental:xray>
+                <dental:bone_loss>SLIGHT</dental:bone_loss>
+                <dental:furcation>NONE</dental:furcation>
+                <dental:periapical>NORMAL</dental:periapical>
+                <dental:calculus_visible>true</dental:calculus_visible>
+              </dental:xray>
+
+              <!-- restorations absent for tooth 21 -->
+              <dental:restorations xsi:nil="true"/>
+
+            </dental:tooth>
+
+          </dental:teeth>
+        </dental:periodontal>
+      </dental:examination>
+
+      <!-- L3 ── treatments (array of structs) ───────────────────────── -->
+      <dental:treatments>
+        <dental:treatment>
+          <dental:cdt_code>D0120</dental:cdt_code>
+          <dental:description>Periodic oral evaluation</dental:description>
+          <dental:fee>65.00</dental:fee>
+          <dental:tooth_numbers>
+            <dental:num>11</dental:num>
+            <dental:num>21</dental:num>
+          </dental:tooth_numbers>
+          <dental:materials xsi:nil="true"/>
+        </dental:treatment>
+        <dental:treatment>
+          <dental:cdt_code>D1110</dental:cdt_code>
+          <dental:description>Prophylaxis - adult</dental:description>
+          <dental:fee>95.00</dental:fee>
+          <dental:tooth_numbers xsi:nil="true"/>
+          <dental:materials>
+            <dental:material>
+              <dental:name>Prophy paste</dental:name>
+              <dental:lot>PASTE2026A</dental:lot>
+              <dental:expiry>2027-01-01</dental:expiry>
+            </dental:material>
+          </dental:materials>
+        </dental:treatment>
+      </dental:treatments>
+
+    </dental:clinical>
+
+    <!-- L2 ── lab_results ────────────────────────────────────────────────── -->
+    <lab:lab_results>
+
+      <!-- L3 ── panels (array) ──────────────────────────────────────── -->
+      <lab:panels>
+
+        <!-- L4 ── panel: CBC ──────────────────────────────────────── -->
+        <lab:panel>
+          <lab:name>CBC</lab:name>
+          <lab:ordered_date>2026-05-01</lab:ordered_date>
+          <lab:resulted_date>2026-05-02</lab:resulted_date>
+          <lab:lab_name>Quest Diagnostics</lab:lab_name>
+
+          <!-- L5 ── tests (array of structs) ───────────────────── -->
+          <lab:tests>
+            <!-- L6 ── test ──────────────────────────────────── -->
+            <lab:test>
+              <lab:loinc_code>6690-2</lab:loinc_code>
+              <lab:name>WBC</lab:name>
+              <lab:value_numeric>7.5</lab:value_numeric>
+              <lab:value_text xsi:nil="true"/>
+              <lab:unit>K/uL</lab:unit>
+              <!-- L7 ── reference_range ───────────────────── -->
+              <lab:reference_range>
+                <lab:low>4.5</lab:low>
+                <lab:high>11.0</lab:high>
+                <lab:unit>K/uL</lab:unit>
+              </lab:reference_range>
+              <lab:flag>NORMAL</lab:flag>
+              <lab:status>FINAL</lab:status>
+            </lab:test>
+            <lab:test>
+              <lab:loinc_code>789-8</lab:loinc_code>
+              <lab:name>RBC</lab:name>
+              <lab:value_numeric>4.8</lab:value_numeric>
+              <lab:value_text xsi:nil="true"/>
+              <lab:unit>M/uL</lab:unit>
+              <lab:reference_range>
+                <lab:low>4.2</lab:low>
+                <lab:high>5.4</lab:high>
+                <lab:unit>M/uL</lab:unit>
+              </lab:reference_range>
+              <lab:flag>NORMAL</lab:flag>
+              <lab:status>FINAL</lab:status>
+            </lab:test>
+            <lab:test>
+              <lab:loinc_code>718-7</lab:loinc_code>
+              <lab:name>HGB</lab:name>
+              <lab:value_numeric>14.2</lab:value_numeric>
+              <lab:value_text xsi:nil="true"/>
+              <lab:unit>g/dL</lab:unit>
+              <lab:reference_range>
+                <lab:low>12.0</lab:low>
+                <lab:high>16.0</lab:high>
+                <lab:unit>g/dL</lab:unit>
+              </lab:reference_range>
+              <lab:flag>NORMAL</lab:flag>
+              <lab:status>FINAL</lab:status>
+            </lab:test>
+          </lab:tests>
+        </lab:panel>
+
+        <!-- L4 ── panel: HbA1c ─────────────────────────────────────── -->
+        <lab:panel>
+          <lab:name>HbA1c</lab:name>
+          <lab:ordered_date>2026-05-01</lab:ordered_date>
+          <lab:resulted_date>2026-05-02</lab:resulted_date>
+          <lab:lab_name>Quest Diagnostics</lab:lab_name>
+          <lab:tests>
+            <lab:test>
+              <lab:loinc_code>4548-4</lab:loinc_code>
+              <lab:name>HbA1c</lab:name>
+              <lab:value_numeric>5.4</lab:value_numeric>
+              <lab:value_text xsi:nil="true"/>
+              <lab:unit>%</lab:unit>
+              <lab:reference_range>
+                <lab:low>4.0</lab:low>
+                <lab:high>5.6</lab:high>
+                <lab:unit>%</lab:unit>
+              </lab:reference_range>
+              <lab:flag>NORMAL</lab:flag>
+              <lab:status>FINAL</lab:status>
+            </lab:test>
+          </lab:tests>
+        </lab:panel>
+
+      </lab:panels>
+    </lab:lab_results>
+
+    <!-- L2 ── medications ───────────────────────────────────────────────── -->
+    <pharma:medications>
+      <pharma:medication>
+        <pharma:rxnorm_code>723</pharma:rxnorm_code>
+        <pharma:brand_name>Amoxil</pharma:brand_name>
+        <pharma:generic_name>Amoxicillin</pharma:generic_name>
+        <pharma:dosage_strength>500</pharma:dosage_strength>
+        <pharma:dosage_unit>mg</pharma:dosage_unit>
+        <pharma:route>ORAL</pharma:route>
+        <pharma:frequency>TID</pharma:frequency>
+        <pharma:days_supply>7</pharma:days_supply>
+        <pharma:start_date>2026-05-10</pharma:start_date>
+        <pharma:end_date>2026-05-17</pharma:end_date>
+        <!-- L3 ── prescriber ──────────────────────────────────────── -->
+        <pharma:prescriber>
+          <pharma:npi>1234567890</pharma:npi>
+          <pharma:first_name>John</pharma:first_name>
+          <pharma:last_name>Smith</pharma:last_name>
+          <pharma:specialty>General Dentistry</pharma:specialty>
+        </pharma:prescriber>
+        <!-- L3 ── dispense_info ───────────────────────────────────── -->
+        <pharma:dispense_info>
+          <pharma:quantity>21</pharma:quantity>
+          <pharma:unit>TABLET</pharma:unit>
+          <pharma:refills_authorized>0</pharma:refills_authorized>
+          <pharma:refills_remaining>0</pharma:refills_remaining>
+          <pharma:pharmacy_npi>9876543210</pharma:pharmacy_npi>
+        </pharma:dispense_info>
+      </pharma:medication>
+    </pharma:medications>
+
+    <!-- L2 ── billing ───────────────────────────────────────────────────── -->
+    <billing:claim>
+      <!-- L3 ── header ────────────────────────────────────────────── -->
+      <billing:header>
+        <billing:claim_id>CLM-DEEP-001</billing:claim_id>
+        <billing:claim_type>DENTAL</billing:claim_type>
+        <billing:submission_date>2026-05-10</billing:submission_date>
+        <billing:payer_id>BC-001</billing:payer_id>
+        <billing:status>SUBMITTED</billing:status>
+      </billing:header>
+      <!-- L3 ── lines (array of structs) ─────────────────────────── -->
+      <billing:lines>
+        <!-- L4 ── line ─────────────────────────────────────────── -->
+        <billing:line>
+          <billing:seq>1</billing:seq>
+          <billing:cdt_code>D0120</billing:cdt_code>
+          <billing:units>1</billing:units>
+          <billing:billed_fee>65.00</billing:billed_fee>
+          <!-- L5 ── adjustments (array) ──────────────────────── -->
+          <billing:adjustments>
+            <billing:adjustment>
+              <billing:adj_type>CONTRACTUAL</billing:adj_type>
+              <billing:amount>-20.00</billing:amount>
+              <billing:reason_code>CO-45</billing:reason_code>
+            </billing:adjustment>
+          </billing:adjustments>
+          <billing:allowed_amount>45.00</billing:allowed_amount>
+          <billing:payer_paid>36.00</billing:payer_paid>
+          <billing:patient_resp>9.00</billing:patient_resp>
+        </billing:line>
+        <billing:line>
+          <billing:seq>2</billing:seq>
+          <billing:cdt_code>D1110</billing:cdt_code>
+          <billing:units>1</billing:units>
+          <billing:billed_fee>95.00</billing:billed_fee>
+          <billing:adjustments>
+            <billing:adjustment>
+              <billing:adj_type>CONTRACTUAL</billing:adj_type>
+              <billing:amount>-30.00</billing:amount>
+              <billing:reason_code>CO-45</billing:reason_code>
+            </billing:adjustment>
+          </billing:adjustments>
+          <billing:allowed_amount>65.00</billing:allowed_amount>
+          <billing:payer_paid>52.00</billing:payer_paid>
+          <billing:patient_resp>13.00</billing:patient_resp>
+        </billing:line>
+      </billing:lines>
+      <!-- L3 ── totals ────────────────────────────────────────────── -->
+      <billing:totals>
+        <billing:total_billed>160.00</billing:total_billed>
+        <billing:total_allowed>110.00</billing:total_allowed>
+        <billing:total_payer_paid>88.00</billing:total_payer_paid>
+        <billing:total_patient_resp>22.00</billing:total_patient_resp>
+      </billing:totals>
+    </billing:claim>
+
+  </ehr:record>
+
+  <!-- ═══════════════════════════════════════════════════════════════════════
+       RECORD 2 — missing secondary insurance, no lab results (xsi:nil),
+                  1 tooth with 1 surface, 1 billing line, no medications
+       ═══════════════════════════════════════════════════════════════════════ -->
+  <ehr:record>
+    <ehr:record_id>REC-DEEP-002</ehr:record_id>
+    <ehr:source_system>DEEP-EHR</ehr:source_system>
+    <ehr:batch_id>BATCH-DEEP-2026</ehr:batch_id>
+    <ehr:year>2026</ehr:year>
+    <ehr:month>5</ehr:month>
+
+    <ehr:patient>
+      <ehr:demographics>
+        <ehr:personal>
+          <ehr:name>
+            <ehr:prefix xsi:nil="true"/>
+            <ehr:first>Robert</ehr:first>
+            <ehr:middle xsi:nil="true"/>
+            <ehr:last>Schema</ehr:last>
+            <ehr:suffix>Sr.</ehr:suffix>
+          </ehr:name>
+          <ehr:date_of_birth>1962-11-20</ehr:date_of_birth>
+          <ehr:gender>M</ehr:gender>
+          <ehr:race>Hispanic</ehr:race>
+          <ehr:ethnicity>Hispanic</ehr:ethnicity>
+          <ehr:marital_status>DIVORCED</ehr:marital_status>
+          <ehr:ssn_last4>1234</ehr:ssn_last4>
+          <ehr:language>ES</ehr:language>
+          <ehr:deceased>false</ehr:deceased>
+        </ehr:personal>
+        <ehr:contact>
+          <ehr:addresses>
+            <ehr:address>
+              <ehr:addr_type>HOME</ehr:addr_type>
+              <ehr:street1>789 Namespace Ave</ehr:street1>
+              <ehr:street2 xsi:nil="true"/>
+              <ehr:city>Prefixburg</ehr:city>
+              <ehr:state>TX</ehr:state>
+              <ehr:zip>75001</ehr:zip>
+              <ehr:country>US</ehr:country>
+              <ehr:active_since>2015-03-10</ehr:active_since>
+              <ehr:coordinates>
+                <ehr:latitude>32.7767</ehr:latitude>
+                <ehr:longitude>-96.7970</ehr:longitude>
+                <ehr:accuracy_m>25</ehr:accuracy_m>
+              </ehr:coordinates>
+            </ehr:address>
+          </ehr:addresses>
+          <ehr:phones>
+            <ehr:phone>555-0200</ehr:phone>
+          </ehr:phones>
+          <ehr:email>robert.schema@example.com</ehr:email>
+          <ehr:preferred_contact>PHONE</ehr:preferred_contact>
+        </ehr:contact>
+        <ehr:insurance>
+          <ehr:primary>
+            <ehr:payer_name>Aetna</ehr:payer_name>
+            <ehr:policy_id>AE-112233</ehr:policy_id>
+            <ehr:group_id>GRP-002</ehr:group_id>
+            <ehr:plan_type>HMO</ehr:plan_type>
+            <ehr:effective_date>2026-01-01</ehr:effective_date>
+            <ehr:term_date>2026-12-31</ehr:term_date>
+            <ehr:coverage>
+              <ehr:deductible_annual>2000.00</ehr:deductible_annual>
+              <ehr:deductible_met>0.00</ehr:deductible_met>
+              <ehr:copay>40.00</ehr:copay>
+              <ehr:coinsurance_pct>70</ehr:coinsurance_pct>
+              <ehr:out_of_pocket_max>7000.00</ehr:out_of_pocket_max>
+              <ehr:out_of_pocket_met>0.00</ehr:out_of_pocket_met>
+            </ehr:coverage>
+          </ehr:primary>
+          <ehr:secondary xsi:nil="true"/>
+        </ehr:insurance>
+      </ehr:demographics>
+    </ehr:patient>
+
+    <dental:clinical>
+      <dental:examination>
+        <dental:exam_date>2026-05-15</dental:exam_date>
+        <dental:exam_type>EMERGENCY</dental:exam_type>
+        <dental:provider_npi>9876543210</dental:provider_npi>
+        <dental:periodontal>
+          <dental:overall_score>SEVERE</dental:overall_score>
+          <dental:bone_loss_pct>35</dental:bone_loss_pct>
+          <dental:teeth>
+            <dental:tooth>
+              <dental:number>36</dental:number>
+              <dental:name>Lower Left First Molar</dental:name>
+              <dental:arch>LOWER</dental:arch>
+              <dental:quadrant>LL</dental:quadrant>
+              <dental:type>PERMANENT</dental:type>
+              <dental:mobility_grade>2</dental:mobility_grade>
+              <dental:furcation_class>CLASS_II</dental:furcation_class>
+              <dental:surfaces>
+                <dental:surface>
+                  <dental:name>BUCCAL</dental:name>
+                  <dental:pocket_depth_mm>7</dental:pocket_depth_mm>
+                  <dental:recession_mm>3</dental:recession_mm>
+                  <dental:bleeding>true</dental:bleeding>
+                  <dental:plaque>true</dental:plaque>
+                  <dental:calculus>HEAVY</dental:calculus>
+                  <dental:gingival_margin>-3</dental:gingival_margin>
+                </dental:surface>
+              </dental:surfaces>
+              <dental:xray>
+                <dental:bone_loss>SEVERE</dental:bone_loss>
+                <dental:furcation>CLASS_II</dental:furcation>
+                <dental:periapical>ABSCESS</dental:periapical>
+                <dental:calculus_visible>true</dental:calculus_visible>
+              </dental:xray>
+              <dental:restorations xsi:nil="true"/>
+            </dental:tooth>
+          </dental:teeth>
+        </dental:periodontal>
+      </dental:examination>
+      <dental:treatments>
+        <dental:treatment>
+          <dental:cdt_code>D7140</dental:cdt_code>
+          <dental:description>Extraction, erupted tooth</dental:description>
+          <dental:fee>185.00</dental:fee>
+          <dental:tooth_numbers>
+            <dental:num>36</dental:num>
+          </dental:tooth_numbers>
+          <dental:materials xsi:nil="true"/>
+        </dental:treatment>
+      </dental:treatments>
+    </dental:clinical>
+
+    <!-- lab results absent for this record -->
+    <lab:lab_results xsi:nil="true"/>
+
+    <!-- no medications prescribed -->
+    <pharma:medications xsi:nil="true"/>
+
+    <billing:claim>
+      <billing:header>
+        <billing:claim_id>CLM-DEEP-002</billing:claim_id>
+        <billing:claim_type>DENTAL</billing:claim_type>
+        <billing:submission_date>2026-05-15</billing:submission_date>
+        <billing:payer_id>AE-001</billing:payer_id>
+        <billing:status>PENDING</billing:status>
+      </billing:header>
+      <billing:lines>
+        <billing:line>
+          <billing:seq>1</billing:seq>
+          <billing:cdt_code>D7140</billing:cdt_code>
+          <billing:units>1</billing:units>
+          <billing:billed_fee>185.00</billing:billed_fee>
+          <billing:adjustments>
+            <billing:adjustment>
+              <billing:adj_type>CONTRACTUAL</billing:adj_type>
+              <billing:amount>-55.00</billing:amount>
+              <billing:reason_code>CO-45</billing:reason_code>
+            </billing:adjustment>
+          </billing:adjustments>
+          <billing:allowed_amount>130.00</billing:allowed_amount>
+          <billing:payer_paid>91.00</billing:payer_paid>
+          <billing:patient_resp>39.00</billing:patient_resp>
+        </billing:line>
+      </billing:lines>
+      <billing:totals>
+        <billing:total_billed>185.00</billing:total_billed>
+        <billing:total_allowed>130.00</billing:total_allowed>
+        <billing:total_payer_paid>91.00</billing:total_payer_paid>
+        <billing:total_patient_resp>39.00</billing:total_patient_resp>
+      </billing:totals>
+    </billing:claim>
+
+  </ehr:record>
+
+</ehr:records>

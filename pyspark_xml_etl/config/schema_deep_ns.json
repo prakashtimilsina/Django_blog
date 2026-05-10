@@ -1,0 +1,364 @@
+{
+  "comment": "Schema for sample_deep_ns.xml — 8 levels deep, 5 namespaces. All field names use local names only (ignoreNamespace=true strips prefixes). Generated via scripts/generate_schema.py then hand-verified.",
+  "type": "struct",
+  "fields": [
+    { "name": "_corrupt_record", "type": "string",  "nullable": true },
+    { "name": "record_id",       "type": "string",  "nullable": false },
+    { "name": "source_system",   "type": "string",  "nullable": true  },
+    { "name": "batch_id",        "type": "string",  "nullable": true  },
+    { "name": "year",            "type": "integer", "nullable": true  },
+    { "name": "month",           "type": "integer", "nullable": true  },
+
+    {
+      "name": "patient", "type": "struct", "nullable": true,
+      "fields": [
+        {
+          "name": "demographics", "type": "struct", "nullable": true,
+          "fields": [
+            {
+              "name": "personal", "type": "struct", "nullable": true,
+              "fields": [
+                {
+                  "name": "name", "type": "struct", "nullable": true,
+                  "fields": [
+                    { "name": "prefix",  "type": "string", "nullable": true },
+                    { "name": "first",   "type": "string", "nullable": true },
+                    { "name": "middle",  "type": "string", "nullable": true },
+                    { "name": "last",    "type": "string", "nullable": true },
+                    { "name": "suffix",  "type": "string", "nullable": true }
+                  ]
+                },
+                { "name": "date_of_birth",   "type": "date",    "nullable": true },
+                { "name": "gender",          "type": "string",  "nullable": true },
+                { "name": "race",            "type": "string",  "nullable": true },
+                { "name": "ethnicity",       "type": "string",  "nullable": true },
+                { "name": "marital_status",  "type": "string",  "nullable": true },
+                { "name": "ssn_last4",       "type": "string",  "nullable": true },
+                { "name": "language",        "type": "string",  "nullable": true },
+                { "name": "deceased",        "type": "boolean", "nullable": true }
+              ]
+            },
+            {
+              "name": "contact", "type": "struct", "nullable": true,
+              "fields": [
+                {
+                  "name": "addresses",
+                  "type": "array", "nullable": true,
+                  "elementType": {
+                    "type": "struct",
+                    "fields": [
+                      { "name": "addr_type",    "type": "string",  "nullable": true },
+                      { "name": "street1",      "type": "string",  "nullable": true },
+                      { "name": "street2",      "type": "string",  "nullable": true },
+                      { "name": "city",         "type": "string",  "nullable": true },
+                      { "name": "state",        "type": "string",  "nullable": true },
+                      { "name": "zip",          "type": "string",  "nullable": true },
+                      { "name": "country",      "type": "string",  "nullable": true },
+                      { "name": "active_since", "type": "date",    "nullable": true },
+                      {
+                        "name": "coordinates", "type": "struct", "nullable": true,
+                        "fields": [
+                          { "name": "latitude",   "type": "double",  "nullable": true },
+                          { "name": "longitude",  "type": "double",  "nullable": true },
+                          { "name": "accuracy_m", "type": "integer", "nullable": true }
+                        ]
+                      }
+                    ]
+                  },
+                  "containsNull": true
+                },
+                {
+                  "name": "phones",
+                  "type": "array", "nullable": true,
+                  "elementType": "string",
+                  "containsNull": true
+                },
+                { "name": "email",             "type": "string", "nullable": true },
+                { "name": "preferred_contact", "type": "string", "nullable": true }
+              ]
+            },
+            {
+              "name": "insurance", "type": "struct", "nullable": true,
+              "fields": [
+                {
+                  "name": "primary", "type": "struct", "nullable": true,
+                  "fields": [
+                    { "name": "payer_name",     "type": "string", "nullable": true },
+                    { "name": "policy_id",      "type": "string", "nullable": true },
+                    { "name": "group_id",       "type": "string", "nullable": true },
+                    { "name": "plan_type",      "type": "string", "nullable": true },
+                    { "name": "effective_date", "type": "date",   "nullable": true },
+                    { "name": "term_date",      "type": "date",   "nullable": true },
+                    {
+                      "name": "coverage", "type": "struct", "nullable": true,
+                      "fields": [
+                        { "name": "deductible_annual",  "type": "double",  "nullable": true },
+                        { "name": "deductible_met",     "type": "double",  "nullable": true },
+                        { "name": "copay",              "type": "double",  "nullable": true },
+                        { "name": "coinsurance_pct",    "type": "integer", "nullable": true },
+                        { "name": "out_of_pocket_max",  "type": "double",  "nullable": true },
+                        { "name": "out_of_pocket_met",  "type": "double",  "nullable": true }
+                      ]
+                    }
+                  ]
+                },
+                { "name": "secondary", "type": "string", "nullable": true }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "clinical", "type": "struct", "nullable": true,
+      "fields": [
+        {
+          "name": "examination", "type": "struct", "nullable": true,
+          "fields": [
+            { "name": "exam_date",    "type": "date",   "nullable": true },
+            { "name": "exam_type",    "type": "string", "nullable": true },
+            { "name": "provider_npi", "type": "string", "nullable": true },
+            {
+              "name": "periodontal", "type": "struct", "nullable": true,
+              "fields": [
+                { "name": "overall_score",  "type": "string",  "nullable": true },
+                { "name": "bone_loss_pct",  "type": "integer", "nullable": true },
+                {
+                  "name": "teeth",
+                  "type": "array", "nullable": true,
+                  "elementType": {
+                    "type": "struct",
+                    "fields": [
+                      { "name": "number",         "type": "integer", "nullable": true },
+                      { "name": "name",           "type": "string",  "nullable": true },
+                      { "name": "arch",           "type": "string",  "nullable": true },
+                      { "name": "quadrant",       "type": "string",  "nullable": true },
+                      { "name": "type",           "type": "string",  "nullable": true },
+                      { "name": "mobility_grade", "type": "integer", "nullable": true },
+                      { "name": "furcation_class","type": "string",  "nullable": true },
+                      {
+                        "name": "surfaces",
+                        "type": "array", "nullable": true,
+                        "elementType": {
+                          "type": "struct",
+                          "fields": [
+                            { "name": "name",             "type": "string",  "nullable": true },
+                            { "name": "pocket_depth_mm",  "type": "integer", "nullable": true },
+                            { "name": "recession_mm",     "type": "integer", "nullable": true },
+                            { "name": "bleeding",         "type": "boolean", "nullable": true },
+                            { "name": "plaque",           "type": "boolean", "nullable": true },
+                            { "name": "calculus",         "type": "string",  "nullable": true },
+                            { "name": "gingival_margin",  "type": "integer", "nullable": true }
+                          ]
+                        },
+                        "containsNull": true
+                      },
+                      {
+                        "name": "xray", "type": "struct", "nullable": true,
+                        "fields": [
+                          { "name": "bone_loss",        "type": "string",  "nullable": true },
+                          { "name": "furcation",        "type": "string",  "nullable": true },
+                          { "name": "periapical",       "type": "string",  "nullable": true },
+                          { "name": "calculus_visible", "type": "boolean", "nullable": true }
+                        ]
+                      },
+                      {
+                        "name": "restorations",
+                        "type": "array", "nullable": true,
+                        "elementType": {
+                          "type": "struct",
+                          "fields": [
+                            { "name": "material_type", "type": "string", "nullable": true },
+                            { "name": "surface_code",  "type": "string", "nullable": true },
+                            { "name": "date_placed",   "type": "date",   "nullable": true },
+                            { "name": "condition",     "type": "string", "nullable": true },
+                            { "name": "lot_number",    "type": "string", "nullable": true }
+                          ]
+                        },
+                        "containsNull": true
+                      }
+                    ]
+                  },
+                  "containsNull": true
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "name": "treatments",
+          "type": "array", "nullable": true,
+          "elementType": {
+            "type": "struct",
+            "fields": [
+              { "name": "cdt_code",    "type": "string", "nullable": true },
+              { "name": "description", "type": "string", "nullable": true },
+              { "name": "fee",         "type": "double", "nullable": true },
+              {
+                "name": "tooth_numbers",
+                "type": "array", "nullable": true,
+                "elementType": "string",
+                "containsNull": true
+              },
+              {
+                "name": "materials",
+                "type": "array", "nullable": true,
+                "elementType": {
+                  "type": "struct",
+                  "fields": [
+                    { "name": "name",   "type": "string", "nullable": true },
+                    { "name": "lot",    "type": "string", "nullable": true },
+                    { "name": "expiry", "type": "date",   "nullable": true }
+                  ]
+                },
+                "containsNull": true
+              }
+            ]
+          },
+          "containsNull": true
+        }
+      ]
+    },
+
+    {
+      "name": "lab_results", "type": "struct", "nullable": true,
+      "fields": [
+        {
+          "name": "panels",
+          "type": "array", "nullable": true,
+          "elementType": {
+            "type": "struct",
+            "fields": [
+              { "name": "name",          "type": "string", "nullable": true },
+              { "name": "ordered_date",  "type": "date",   "nullable": true },
+              { "name": "resulted_date", "type": "date",   "nullable": true },
+              { "name": "lab_name",      "type": "string", "nullable": true },
+              {
+                "name": "tests",
+                "type": "array", "nullable": true,
+                "elementType": {
+                  "type": "struct",
+                  "fields": [
+                    { "name": "loinc_code",    "type": "string", "nullable": true },
+                    { "name": "name",          "type": "string", "nullable": true },
+                    { "name": "value_numeric", "type": "double", "nullable": true },
+                    { "name": "value_text",    "type": "string", "nullable": true },
+                    { "name": "unit",          "type": "string", "nullable": true },
+                    {
+                      "name": "reference_range", "type": "struct", "nullable": true,
+                      "fields": [
+                        { "name": "low",  "type": "double", "nullable": true },
+                        { "name": "high", "type": "double", "nullable": true },
+                        { "name": "unit", "type": "string", "nullable": true }
+                      ]
+                    },
+                    { "name": "flag",   "type": "string", "nullable": true },
+                    { "name": "status", "type": "string", "nullable": true }
+                  ]
+                },
+                "containsNull": true
+              }
+            ]
+          },
+          "containsNull": true
+        }
+      ]
+    },
+
+    {
+      "name": "medications",
+      "type": "array", "nullable": true,
+      "elementType": {
+        "type": "struct",
+        "fields": [
+          { "name": "rxnorm_code",      "type": "string",  "nullable": true },
+          { "name": "brand_name",       "type": "string",  "nullable": true },
+          { "name": "generic_name",     "type": "string",  "nullable": true },
+          { "name": "dosage_strength",  "type": "integer", "nullable": true },
+          { "name": "dosage_unit",      "type": "string",  "nullable": true },
+          { "name": "route",            "type": "string",  "nullable": true },
+          { "name": "frequency",        "type": "string",  "nullable": true },
+          { "name": "days_supply",      "type": "integer", "nullable": true },
+          { "name": "start_date",       "type": "date",    "nullable": true },
+          { "name": "end_date",         "type": "date",    "nullable": true },
+          {
+            "name": "prescriber", "type": "struct", "nullable": true,
+            "fields": [
+              { "name": "npi",       "type": "string", "nullable": true },
+              { "name": "first_name","type": "string", "nullable": true },
+              { "name": "last_name", "type": "string", "nullable": true },
+              { "name": "specialty", "type": "string", "nullable": true }
+            ]
+          },
+          {
+            "name": "dispense_info", "type": "struct", "nullable": true,
+            "fields": [
+              { "name": "quantity",           "type": "integer", "nullable": true },
+              { "name": "unit",               "type": "string",  "nullable": true },
+              { "name": "refills_authorized", "type": "integer", "nullable": true },
+              { "name": "refills_remaining",  "type": "integer", "nullable": true },
+              { "name": "pharmacy_npi",       "type": "string",  "nullable": true }
+            ]
+          }
+        ]
+      },
+      "containsNull": true
+    },
+
+    {
+      "name": "claim", "type": "struct", "nullable": true,
+      "fields": [
+        {
+          "name": "header", "type": "struct", "nullable": true,
+          "fields": [
+            { "name": "claim_id",         "type": "string", "nullable": true },
+            { "name": "claim_type",       "type": "string", "nullable": true },
+            { "name": "submission_date",  "type": "date",   "nullable": true },
+            { "name": "payer_id",         "type": "string", "nullable": true },
+            { "name": "status",           "type": "string", "nullable": true }
+          ]
+        },
+        {
+          "name": "lines",
+          "type": "array", "nullable": true,
+          "elementType": {
+            "type": "struct",
+            "fields": [
+              { "name": "seq",            "type": "integer", "nullable": true },
+              { "name": "cdt_code",       "type": "string",  "nullable": true },
+              { "name": "units",          "type": "integer", "nullable": true },
+              { "name": "billed_fee",     "type": "double",  "nullable": true },
+              {
+                "name": "adjustments",
+                "type": "array", "nullable": true,
+                "elementType": {
+                  "type": "struct",
+                  "fields": [
+                    { "name": "adj_type",    "type": "string", "nullable": true },
+                    { "name": "amount",      "type": "double", "nullable": true },
+                    { "name": "reason_code", "type": "string", "nullable": true }
+                  ]
+                },
+                "containsNull": true
+              },
+              { "name": "allowed_amount", "type": "double", "nullable": true },
+              { "name": "payer_paid",     "type": "double", "nullable": true },
+              { "name": "patient_resp",   "type": "double", "nullable": true }
+            ]
+          },
+          "containsNull": true
+        },
+        {
+          "name": "totals", "type": "struct", "nullable": true,
+          "fields": [
+            { "name": "total_billed",       "type": "double", "nullable": true },
+            { "name": "total_allowed",      "type": "double", "nullable": true },
+            { "name": "total_payer_paid",   "type": "double", "nullable": true },
+            { "name": "total_patient_resp", "type": "double", "nullable": true }
+          ]
+        }
+      ]
+    }
+  ]
+}
